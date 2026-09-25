@@ -1,0 +1,23 @@
+# Virtual environment
+venv/
+venv*
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Grote databestanden en opgeslagen modellen (GitHub limiet is 100MB!)
+*.csv
+*.zip
+*.data
+*.parquet
+*.pkl
+*.h5
+
+# Omgevingsvariabelen en geheime API keys
+.env
