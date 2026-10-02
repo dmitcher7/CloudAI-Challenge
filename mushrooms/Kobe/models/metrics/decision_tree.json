@@ -1,0 +1,17 @@
+{
+  "notebook": "02_modeling",
+  "model": "Decision tree (getuned)",
+  "params": {
+    "criterion": "entropy",
+    "max_leaf_nodes": 80,
+    "min_samples_leaf": 5
+  },
+  "cv_auc": 0.7697,
+  "threshold": 0.163,
+  "test_auc": 0.7731,
+  "test_accuracy_at_0.5": 0.758,
+  "test_recall_poisonous_at_0.5": 0.5224,
+  "test_accuracy": 0.546,
+  "test_recall_poisonous": 0.8918,
+  "test_specificity": 0.3349
+}
