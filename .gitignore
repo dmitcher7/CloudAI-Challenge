@@ -21,3 +21,6 @@ __pycache__/
 
 # Omgevingsvariabelen en geheime API keys
 .env
+# FLAML/Catboost logs
+catboost_*/
+automl.log

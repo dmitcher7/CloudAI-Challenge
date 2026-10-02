@@ -1,0 +1,35 @@
+name: ML Pipeline Auto-Retrain
+
+on:
+  push:
+    paths:
+      - 'mushrooms/Dimi/**'
+      - 'citi_bike/Dimi/**'
+
+jobs:
+  train-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install pandas scikit-learn joblib fastapi uvicorn pydantic matplotlib seaborn pycaret
+
+      - name: Retrain Mushroom Model
+        run: |
+          echo "Simulating retraining of the model..."
+          # If we had a python script instead of a notebook, we would run it here:
+          # python mushrooms/Dimi/train_model.py
+          echo "Model retrained and saved to .pkl!"
+
+      - name: Deploy to Cloud
+        run: |
+          echo "Deploying the updated model to the server (Mock step)..."
+          # e.g., ssh into VM and pull latest changes, or push to Heroku/AWS
