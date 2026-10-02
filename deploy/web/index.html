@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="CloudAI Challenge: kies een model." />
+    <title>CloudAI · Modellen</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;600;700&display=swap');
+      :root { --ink:#17201b; --paper:#f2f0e8; --acid:#c8ff54; --line:#c9cdc7; --muted:#647068; }
+      * { box-sizing:border-box; }
+      body { margin:0; min-height:100vh; color:var(--ink); background:var(--paper); font-family:Manrope, sans-serif; }
+      body::before { content:""; position:fixed; inset:0; pointer-events:none; opacity:.28; background-image:radial-gradient(#89938b 0.6px,transparent 0.6px); background-size:6px 6px; }
+      main { position:relative; max-width:1180px; margin:auto; min-height:calc(100vh - 72px); padding:8vh 32px 48px; display:grid; grid-template-columns:1.05fr .95fr; gap:8vw; align-items:center; }
+      .eyebrow,.card-head,footer { font-family:"DM Mono",monospace; text-transform:uppercase; letter-spacing:.08em; font-size:12px; }
+      .eyebrow::before { content:""; display:inline-block; width:36px; border-top:2px solid; margin:0 12px 3px 0; }
+      h1 { font-size:clamp(52px,7vw,98px); line-height:.88; letter-spacing:-.065em; margin:34px 0; max-width:680px; }
+      h1 em { font-style:normal; position:relative; z-index:0; }
+      h1 em::after { content:""; position:absolute; left:-.02em; right:-.07em; bottom:.03em; height:.24em; background:var(--acid); z-index:-1; transform:rotate(-1deg); }
+      .lead { color:var(--muted); font-size:18px; line-height:1.65; max-width:540px; }
+      .facts { display:flex; gap:30px; border-top:1px solid var(--line); margin-top:50px; padding-top:22px; }
+      .facts div { display:flex; gap:10px; align-items:flex-start; }
+      .facts span { font-family:"DM Mono"; font-size:11px; color:var(--muted); }
+      .facts p { margin:0; font-size:12px; max-width:100px; }
+      .models { display:grid; gap:28px; }
+      a.card { display:block; background:#fff; border:1px solid var(--ink); padding:30px; box-shadow:12px 12px 0 var(--ink); color:inherit; text-decoration:none; transition:transform .12s, box-shadow .12s; }
+      a.card:hover { transform:translate(-3px,-3px); box-shadow:15px 15px 0 var(--ink); }
+      .card-head { display:flex; justify-content:space-between; border-bottom:1px solid var(--line); padding-bottom:16px; }
+      .card-head p { margin:0; }
+      .status { color:#9b6210; }
+      .status.ok { color:#317338; }
+      h2 { font-size:30px; letter-spacing:-.04em; margin:22px 0 10px; }
+      .card p.text { margin:0; color:var(--muted); line-height:1.6; }
+      .go { margin-top:20px; border:1px solid var(--ink); background:var(--ink); color:#fff; padding:14px 16px; font:600 14px Manrope; display:flex; justify-content:space-between; }
+      a.card:hover .go { background:var(--acid); color:var(--ink); }
+      footer { position:relative; border-top:1px solid var(--line); max-width:1180px; margin:auto; padding:25px 32px; display:flex; justify-content:space-between; }
+      footer a { color:inherit; }
+      @media(max-width:800px){ main{grid-template-columns:1fr;padding-top:50px}.facts{margin-top:30px}a.card{box-shadow:7px 7px 0}h1{font-size:58px} }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="intro">
+        <p class="eyebrow">CLOUDAI CHALLENGE · GIT PUSH &amp; PRAY</p>
+        <h1>Twee datasets, <em>één API.</em></h1>
+        <p class="lead">Beide modellen draaien op dezelfde Oracle VM en worden automatisch gedeployed bij elke merge naar main. Kies hiernaast een model om het uit te proberen.</p>
+        <div class="facts">
+          <div><span>01</span><p>FastAPI op Oracle Cloud</p></div>
+          <div><span>02</span><p>CI/CD met GitHub Actions</p></div>
+          <div><span>03</span><p>Automatische rollback</p></div>
+        </div>
+      </section>
+
+      <section class="models" aria-label="Modellen">
+        <a class="card" href="mushrooms.html">
+          <div class="card-head"><p>Classificatie</p><span id="mushrooms-status" class="status">controleren…</span></div>
+          <h2>🍄 Mushrooms</h2>
+          <p class="text">Eetbaar of giftig? Voorspelling op basis van hoed, steel en vindplaats.</p>
+          <div class="go">Probeer het model <span>→</span></div>
+        </a>
+        <a class="card" href="citi_bike.html">
+          <div class="card-head"><p>Regressie</p><span id="citi_bike-status" class="status">controleren…</span></div>
+          <h2>🚲 Citi Bike</h2>
+          <p class="text">Hoe lang ben je onderweg? Schatting van de ritduur op basis van vertrekmoment en station.</p>
+          <div class="go">Probeer het model <span>→</span></div>
+        </a>
+      </section>
+    </main>
+    <footer><span>CLOUDAI / 2026</span><a id="docs" href="/docs">API-documentatie ↗</a></footer>
+    <script>
+      // Geserveerd door de API zelf -> zelfde adres. Lokaal geopend -> Oracle VM.
+      const API_URL = new URLSearchParams(location.search).get("api")
+        || (location.protocol.startsWith("http") ? location.origin : "http://89.168.73.76:8000");
+      document.getElementById("docs").href = `${API_URL}/docs`;
+
+      for (const name of ["mushrooms", "citi_bike"]) {
+        const element = document.getElementById(`${name}-status`);
+        fetch(`${API_URL}/${name}/`)
+          .then((response) => response.json())
+          .then((info) => {
+            element.textContent = `${info.model} · online`;
+            element.classList.add("ok");
+          })
+          .catch(() => { element.textContent = "offline"; });
+      }
+    </script>
+  </body>
+</html>

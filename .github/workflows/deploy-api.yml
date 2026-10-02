@@ -1,16 +1,14 @@
 name: Deploy model-API naar Oracle VM
 
-# Draait wanneer een pull request naar main wordt gemerged (geaccepteerd) die het model (.pkl),
-# de API of de webpagina wijzigt, en handmatig via de knop "Run workflow" op het tabblad Actions.
+# Draait wanneer een pull request naar main wordt gemerged (geaccepteerd) die iets in deploy/
+# wijzigt (modellen, API of webpagina's), en handmatig via de knop "Run workflow" op het tabblad Actions.
 # Een gesloten pull request die NIET gemerged is, wordt overgeslagen.
 on:
   pull_request:
     types: [closed]
     branches: [main]
     paths:
-      - "mushrooms/deploy/mushrooms_rf/**"
-      - "mushrooms/deploy/check_model.py"
-      - "mushrooms/index.html"
+      - "deploy/**"
       - ".github/workflows/deploy-api.yml"
   workflow_dispatch:
 
@@ -24,8 +22,7 @@ permissions:
   pull-requests: read
 
 env:
-  APP_DIR: mushrooms/deploy/mushrooms_rf   # map in de repo met app.py, requirements.txt en het model (.pkl)
-  PAGE: mushrooms/index.html               # webpagina in de repo; leeg laten als die al in APP_DIR staat
+  APP_DIR: deploy                          # map in de repo met app.py, requirements.txt, web/ en de modellen
   VM_HOST: 89.168.73.76
   VM_USER: ubuntu
   REMOTE_DIR: rf-api                       # map op de VM, onder /home/ubuntu
@@ -68,20 +65,20 @@ jobs:
       - name: Dependencies installeren
         run: pip install -r "$APP_DIR/requirements.txt" httpx
 
-      - name: Model laden en testen
-        run: python mushrooms/deploy/check_model.py "$APP_DIR"
+      - name: Modellen laden en testen
+        run: python "$APP_DIR/check_model.py" "$APP_DIR"
 
-      - name: Gebruikt de API het nieuwe model?
+      - name: Gebruikt de API de nieuwe modellen?
         if: github.event_name == 'pull_request'
         run: |
-          # app.py laadt maar een bestand (MODEL_PATH, standaard stacking.pkl). Een nieuw .pkl met
-          # een andere naam zou wel naar de VM gaan, maar nooit gebruikt worden.
-          used=$(cd "$APP_DIR" && python -W ignore -c "import app; print(app.MODEL_PATH.name)")
-          echo "API laadt: $used"
+          # Per model laadt de API maar een bestand (mushrooms/stacking.pkl, citi_bike/model.pkl).
+          # Een nieuw .pkl met een andere naam zou wel naar de VM gaan, maar nooit gebruikt worden.
+          used=$(cd "$APP_DIR" && python -W ignore -c "import app; [print(p.resolve().relative_to(app.HERE.resolve()).as_posix()) for p in app.MODEL_PATHS]")
+          echo "API laadt:"; echo "$used"
           status=0
           while read -r file; do
-            if [ "$(basename "$file")" != "$used" ]; then
-              echo "::error file=$file::$file wordt niet gebruikt door de API (die laadt $used). Geef het model de naam $used of pas MODEL_PATH aan in app.py."
+            if ! printf '%s\n' "$used" | grep -qxF "${file#"$APP_DIR"/}"; then
+              echo "::error file=$file::$file wordt niet gebruikt door de API (die laadt: $(echo $used)). Geef het model dezelfde naam of pas MODEL_PATH aan in de api.py van dat model."
               status=1
             fi
           done < new_models.txt
@@ -151,19 +148,14 @@ jobs:
           ssh vm "REMOTE_DIR='$REMOTE_DIR' bash -s" <<'REMOTE'
           set -euo pipefail
           rm -rf "$HOME/$REMOTE_DIR.prev"
-          mkdir -p "$HOME/$REMOTE_DIR" "$HOME/$REMOTE_DIR.prev"
-          cd "$HOME/$REMOTE_DIR"
-          for f in *.py *.txt *.pkl *.html; do
-            if [ -e "$f" ]; then cp -p "$f" "$HOME/$REMOTE_DIR.prev/"; fi
-          done
+          mkdir -p "$HOME/$REMOTE_DIR"
+          # Alles behalve de venv, inclusief submappen (mushrooms/, citi_bike/, web/).
+          rsync -a --exclude venv --exclude __pycache__ "$HOME/$REMOTE_DIR/" "$HOME/$REMOTE_DIR.prev/"
           REMOTE
 
       - name: Bestanden kopieren
         run: |
           rsync -az --exclude venv --exclude __pycache__ "$APP_DIR"/ "vm:$REMOTE_DIR/"
-          if [ -n "$PAGE" ] && [ -f "$PAGE" ]; then
-            rsync -az "$PAGE" "vm:$REMOTE_DIR/index.html"
-          fi
 
       - name: Installeren, herstarten en controleren
         run: |
@@ -185,7 +177,8 @@ jobs:
           rollback() {
             echo "::error::Nieuwe versie start niet; vorige versie wordt teruggezet."
             if ls "$HOME/$REMOTE_DIR.prev/"* >/dev/null 2>&1; then
-              cp -p "$HOME/$REMOTE_DIR.prev/"* .
+              # Exact de vorige toestand: ook nieuw toegevoegde bestanden weer weg (venv blijft).
+              rsync -a --delete --exclude venv "$HOME/$REMOTE_DIR.prev/" ./
               venv/bin/pip install -q --no-cache-dir -r requirements.txt || true
               sudo systemctl restart rf-api
               if check; then echo "Vorige versie draait weer."; else echo "::error::Ook de vorige versie start niet."; fi
