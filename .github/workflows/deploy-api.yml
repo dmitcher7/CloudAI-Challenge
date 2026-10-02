@@ -106,8 +106,17 @@ jobs:
             exit 1
           fi
           mkdir -p ~/.ssh
-          printf '%s\n' "$VM_SSH_KEY" > ~/.ssh/deploy_key
+          # Aanvaardt de sleutel als base64 (aanbevolen) of als gewone tekst; verwijdert Windows-regeleinden.
+          if printf '%s' "$VM_SSH_KEY" | grep -q -- "-----BEGIN"; then
+            printf '%s\n' "$VM_SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
+          else
+            printf '%s' "$VM_SSH_KEY" | tr -d '[:space:]' | base64 -d > ~/.ssh/deploy_key || true
+          fi
           chmod 600 ~/.ssh/deploy_key
+          if ! ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null 2>&1; then
+            echo "::error::VM_SSH_KEY is geen geldige private sleutel. Maak het secret opnieuw aan met de uitvoer van: base64 -w0 ~/github_deploy_key"
+            exit 1
+          fi
           ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts
           {
             echo "Host vm"
