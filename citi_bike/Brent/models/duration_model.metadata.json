@@ -1,0 +1,39 @@
+{
+  "model_name": "hist_gradient_boosting",
+  "features": [
+    "rideable_type",
+    "member_casual",
+    "start_station_id",
+    "start_lat",
+    "start_lng",
+    "start_hour_sin",
+    "start_hour_cos",
+    "weekday_sin",
+    "weekday_cos",
+    "month_sin",
+    "month_cos",
+    "is_weekend"
+  ],
+  "target": "duration_minutes",
+  "trained_at_utc": "2026-10-02T12:49:36.299539+00:00",
+  "training_period": [
+    "2023-12-31 21:40:09.191000",
+    "2024-03-16 12:20:50.195000"
+  ],
+  "holdout_period": [
+    "2024-03-16 12:20:53.125000",
+    "2024-03-31 23:57:16.025000"
+  ],
+  "metrics": {
+    "model": "hist_gradient_boosting",
+    "mae_minutes": 6.691827484395623,
+    "rmse_minutes": 11.719170270920864,
+    "median_ae_minutes": 4.145105954666024,
+    "r2": 0.04864699873542078,
+    "train_rows": 400000,
+    "test_rows": 100000,
+    "test_start": "2024-03-16 12:20:53.125000",
+    "test_end": "2024-03-31 23:57:16.025000"
+  },
+  "limitations": "No weather/events/availability; prediction is conditional on recorded trips."
+}

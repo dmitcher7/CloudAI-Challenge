@@ -1,0 +1,32 @@
+# Downloaded/generated data
+data/raw/*
+data/interim/*
+data/processed/*
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
+
+# The selected model is small enough to ship with the API (<100 MB).
+# CI may additionally create temporary/experimental artifacts.
+models/*.part
+models/*.tmp
+
+# Python / notebooks
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+.pytest_cache/
+.ipynb_checkpoints/
+.coverage
+htmlcov/
+
+# Local configuration and cloud output
+.env
+.aws/
+mlruns/
+outputs/

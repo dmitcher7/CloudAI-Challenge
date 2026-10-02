@@ -1,0 +1,4 @@
+# Install only when executing notebooks/07_aws_sagemaker.ipynb.
+# The local API and CI do not need the SageMaker SDK.
+boto3==1.35.96
+sagemaker==2.237.3
