@@ -1,0 +1,28 @@
+{
+  "notebook": "02_modeling",
+  "model": "Random forest (getuned)",
+  "params": {
+    "n_estimators": 500,
+    "min_samples_leaf": 2,
+    "max_features": 0.3,
+    "max_depth": null,
+    "class_weight": null
+  },
+  "cv_auc": 0.836,
+  "threshold": 0.211,
+  "test_auc": 0.8538,
+  "test_accuracy_at_0.5": 0.813,
+  "test_recall_poisonous_at_0.5": 0.6174,
+  "test_accuracy": 0.649,
+  "test_recall_poisonous": 0.8892,
+  "test_specificity": 0.5024,
+  "safe_threshold": 0.096,
+  "noise_eps_used": 0.05,
+  "threshold_noise_aware": 0.246,
+  "deploy_zones": {
+    "eetbaar_onder": 0.096,
+    "giftig_vanaf": 0.246
+  },
+  "test_share_safe_edible": 0.099,
+  "test_poisonous_in_safe_zone": 0.0909
+}

@@ -1,0 +1,12 @@
+{
+  "notebook": "03_pycaret",
+  "model": "RandomForestClassifier",
+  "cv_auc": 0.8262,
+  "threshold": 0.15,
+  "test_auc": 0.8354,
+  "test_accuracy_at_0.5": 0.797,
+  "test_recall_poisonous_at_0.5": 0.6148,
+  "test_accuracy": 0.567,
+  "test_recall_poisonous": 0.9367,
+  "test_specificity": 0.3414
+}

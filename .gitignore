@@ -13,6 +13,7 @@ __pycache__/
 
 # Grote databestanden en opgeslagen modellen (GitHub limiet is 100MB!)
 *.csv
+*.log
 *.zip
 *.data
 *.parquet
