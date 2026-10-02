@@ -1,10 +1,7 @@
-"""REST API rond een scikit-learn model (losse Pipeline of StackingClassifier).
+"""Mushroom-model: eetbaar (0) of giftig (1). Wordt door ../app.py gekoppeld onder /mushrooms.
 
 Het model bepaalt zelf welke kenmerken en categorieen geldig zijn; een ander
-model gebruiken = MODEL_PATH aanpassen (of het bestand vervangen) en herstarten.
-
-Starten:  uvicorn app:app --host 0.0.0.0 --port 8000
-Testen:   http://<ip-adres>:8000/docs
+model gebruiken = het bestand vervangen (of MUSHROOMS_MODEL_PATH zetten) en herstarten.
 """
 import os
 from pathlib import Path
@@ -12,17 +9,13 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
-from fastapi import Body, Depends, FastAPI, Header, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Body, HTTPException
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder
 
 HERE = Path(__file__).parent
-MODEL_PATH = Path(os.environ.get("MODEL_PATH", HERE / "stacking.pkl"))
-API_KEY = os.environ.get("API_KEY")  # optioneel: indien gezet is de header X-API-Key verplicht
-PAGE_PATH = HERE / "index.html"  # optioneel: webpagina, bereikbaar op /app
+MODEL_PATH = Path(os.environ.get("MUSHROOMS_MODEL_PATH", HERE / "stacking.pkl"))
 
 # Leesbare namen voor de lettercodes van de Secondary Mushroom-dataset.
 # De API aanvaardt zowel de code ("w") als het woord ("white").
@@ -110,28 +103,10 @@ WORDS = {
 EXAMPLE = {c: 6.0 for c in NUMERIC} | {c: codes[0] for c, codes in ALLOWED.items()}
 
 
-def check_api_key(x_api_key: str | None = Header(default=None)):
-    if API_KEY and x_api_key != API_KEY:
-        raise HTTPException(status_code=401, detail="Ongeldige of ontbrekende X-API-Key")
+router = APIRouter(tags=["mushrooms"])
 
 
-app = FastAPI(title="Mushroom model API", version="2.0")
-
-# CORS: laat webpagina's op een ander adres (of lokaal geopend) de API aanroepen.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-
-@app.get("/")
+@router.get("/")
 def info():
     return {
         "model": type(model).__name__,
@@ -144,15 +119,7 @@ def info():
     }
 
 
-@app.get("/app", include_in_schema=False)
-def page():
-    # Serveert index.html vanaf de VM zelf, zodat pagina en API hetzelfde adres hebben.
-    if not PAGE_PATH.exists():
-        raise HTTPException(status_code=404, detail="index.html staat niet naast app.py")
-    return FileResponse(PAGE_PATH, media_type="text/html")
-
-
-@app.post("/predict", dependencies=[Depends(check_api_key)])
+@router.post("/predict")
 def predict(features: dict[str, float | str | None] = Body(examples=[EXAMPLE])):
     row, ignored, errors = {}, [], {}
     for key, value in features.items():

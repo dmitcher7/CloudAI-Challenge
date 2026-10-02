@@ -18,8 +18,8 @@ __pycache__/
 *.data
 *.parquet
 *.pkl
-# ...behalve het model dat naar de VM gaat (zie .github/workflows/deploy-api.yml)
-!mushrooms/deploy/mushrooms_rf/*.pkl
+# ...behalve de modellen die naar de VM gaan (zie .github/workflows/deploy-api.yml)
+!deploy/*/*.pkl
 *.h5
 
 # Omgevingsvariabelen en geheime API keys
