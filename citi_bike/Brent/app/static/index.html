@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Voorspel de duur van een Citi Bike-rit bij vertrek." />
+    <title>Green Wheels · Ritduur</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main>
+      <section class="intro">
+        <p class="eyebrow">NYC · CITI BIKE · ML</p>
+        <h1>Hoe lang ben je <em>onderweg?</em></h1>
+        <p class="lead">Een uitlegbare schatting op basis van wat we bij vertrek weten—geen informatie uit de toekomst.</p>
+        <div class="facts">
+          <div><span>01</span><p>Tijdsgebaseerde evaluatie</p></div>
+          <div><span>02</span><p>Geen target leakage</p></div>
+          <div><span>03</span><p>Open Citi Bike-data</p></div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="form-title">
+        <div class="card-head">
+          <p>Trip estimator</p>
+          <span id="health" class="status">model controleren…</span>
+        </div>
+        <h2 id="form-title">Plan je vertrek</h2>
+        <form id="trip-form">
+          <label>Vertrekmoment<input required id="started_at" type="datetime-local" /></label>
+          <div class="split">
+            <label>Fiets
+              <select id="rideable_type"><option value="classic_bike">Classic</option><option value="electric_bike">Electric</option></select>
+            </label>
+            <label>Rijder
+              <select id="member_casual"><option value="member">Member</option><option value="casual">Casual</option></select>
+            </label>
+          </div>
+          <label>Startstation-ID<input required id="start_station_id" value="HB101" maxlength="100" /></label>
+          <div class="split">
+            <label>Latitude<input required id="start_lat" type="number" step="0.0001" min="40.4" max="41.1" value="40.7359" /></label>
+            <label>Longitude<input required id="start_lng" type="number" step="0.0001" min="-74.4" max="-73.5" value="-74.0303" /></label>
+          </div>
+          <button type="submit">Bereken ritduur <span>→</span></button>
+        </form>
+        <div id="result" class="result" hidden aria-live="polite"></div>
+      </section>
+    </main>
+    <footer><span>GREEN WHEELS / 2026</span><a href="/docs">API-documentatie ↗</a></footer>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
+
