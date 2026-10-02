@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mushroom Predictor</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; background-color: #f4f4f9; }
+        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; text-align: center; }
+        label { font-weight: bold; display: block; margin-top: 15px; }
+        input, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        button { background: #27ae60; color: white; border: none; padding: 12px; margin-top: 20px; width: 100%; cursor: pointer; font-size: 16px; border-radius: 5px; }
+        button:hover { background: #2ecc71; }
+        #result { margin-top: 20px; font-size: 24px; font-weight: bold; text-align: center; }
+        #probs { margin-top: 8px; text-align: center; color: #555; }
+        #api { text-align: center; font-size: 12px; color: #888; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🍄 Mushroom Predictor ☠️</h1>
+    <p style="text-align:center">Enter mushroom properties to predict if it is edible or poisonous.</p>
+    <p id="api"></p>
+
+    <!-- Fields are generated from GET / on the API -->
+    <div id="fields"></div>
+
+    <button onclick="predict()">Predict Edibility</button>
+
+    <div id="result"></div>
+    <div id="probs"></div>
+</div>
+
+<script>
+    // Mushroom API on the Oracle VM. Override with ?api=http://localhost:8000
+    const API_URL = new URLSearchParams(location.search).get('api') || 'http://89.168.73.76:8000';
+
+    // Fallback (same as GET / on the API) in case that call fails
+    let MODEL_INFO = {
+        numeric_features: ['cap-diameter', 'stem-height', 'stem-width'],
+        labels: {
+            'gill-color': { b: 'buff', e: 'red', f: 'none', g: 'gray', k: 'black', n: 'brown', o: 'orange', p: 'pink', r: 'green', u: 'purple', w: 'white', y: 'yellow' },
+            'habitat': { d: 'woods', g: 'grasses', h: 'heaths', l: 'leaves', m: 'meadows', p: 'paths', u: 'urban', w: 'waste' },
+            'season': { a: 'autumn', s: 'spring', u: 'summer', w: 'winter' },
+            'ring-type': { e: 'evanescent', f: 'none', g: 'grooved', l: 'large', m: 'movable', p: 'pendant', r: 'flaring', z: 'zone' },
+            'cap-shape': { b: 'bell', c: 'conical', f: 'flat', o: 'others', p: 'spherical', s: 'sunken', x: 'convex' },
+            'stem-surface': { f: 'none', g: 'grooves', h: 'shiny', i: 'fibrous', k: 'silky', s: 'smooth', t: 'sticky', y: 'scaly' }
+        }
+    };
+    MODEL_INFO.categorical_features = Object.fromEntries(
+        Object.entries(MODEL_INFO.labels).map(([field, labels]) => [field, Object.keys(labels)])
+    );
+
+    const UNITS = { 'cap-diameter': 'cm', 'stem-height': 'cm', 'stem-width': 'mm' };
+    const DEFAULTS = {
+        'cap-diameter': 6.2, 'stem-height': 6.0, 'stem-width': 11.4,
+        'gill-color': 'w', 'habitat': 'd', 'season': 'a', 'ring-type': 'f', 'cap-shape': 'x', 'stem-surface': 's'
+    };
+
+    const prettify = name => name.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+    function buildForm() {
+        let html = '';
+        for (const field of MODEL_INFO.numeric_features) {
+            const unit = UNITS[field] ? ` (${UNITS[field]})` : '';
+            html += `<label for="${field}">${prettify(field)}${unit}:</label>
+                     <input type="number" id="${field}" step="0.1" value="${DEFAULTS[field] ?? ''}">`;
+        }
+        for (const [field, codes] of Object.entries(MODEL_INFO.categorical_features)) {
+            const labels = (MODEL_INFO.labels || {})[field] || {};
+            const options = codes.map(code => {
+                const text = labels[code] ? `${prettify(labels[code])} (${code})` : code;
+                const selected = code === DEFAULTS[field] ? ' selected' : '';
+                return `<option value="${code}"${selected}>${text}</option>`;
+            }).join('');
+            html += `<label for="${field}">${prettify(field)}:</label>
+                     <select id="${field}">${options}</select>`;
+        }
+        document.getElementById('fields').innerHTML = html;
+    }
+
+    async function loadModelInfo() {
+        document.getElementById('api').innerText = `API: ${API_URL}`;
+        buildForm();
+        try {
+            const response = await fetch(`${API_URL}/`);
+            const info = await response.json();
+            if (info.numeric_features && info.categorical_features) {
+                MODEL_INFO = info;
+                buildForm();
+                document.getElementById('api').innerText = `API: ${API_URL} · model: ${info.model}`;
+            }
+        } catch (error) {
+            console.warn('Could not load model info from API, using fallback fields.', error);
+        }
+    }
+
+    async function predict() {
+        const data = {};
+        for (const field of MODEL_INFO.numeric_features) {
+            const value = parseFloat(document.getElementById(field).value);
+            data[field] = isNaN(value) ? null : value;
+        }
+        for (const field of Object.keys(MODEL_INFO.categorical_features)) {
+            data[field] = document.getElementById(field).value;
+        }
+
+        const resultDiv = document.getElementById('result');
+        const probsDiv = document.getElementById('probs');
+        try {
+            const response = await fetch(`${API_URL}/predict`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(JSON.stringify(result.detail));
+
+            // Class 1 = poisonous, class 0 = edible
+            const pPoisonous = result.probabilities['1'];
+            if (result.prediction === 1) {
+                resultDiv.innerText = `Poisonous ☠️ (Risk: ${(pPoisonous * 100).toFixed(1)}%)`;
+                resultDiv.style.color = '#e74c3c';
+            } else {
+                resultDiv.innerText = `Edible 🍄 (Safe: ${((1 - pPoisonous) * 100).toFixed(1)}%)`;
+                resultDiv.style.color = '#27ae60';
+            }
+            probsDiv.innerText = `P(edible) = ${result.probabilities['0']} · P(poisonous) = ${pPoisonous}`;
+        } catch (error) {
+            resultDiv.innerText = "Error connecting to backend API!";
+            resultDiv.style.color = "red";
+            probsDiv.innerText = error.message;
+        }
+    }
+
+    loadModelInfo();
+</script>
+
+</body>
+</html>
