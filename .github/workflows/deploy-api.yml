@@ -106,17 +106,37 @@ jobs:
             exit 1
           fi
           mkdir -p ~/.ssh
-          # Aanvaardt de sleutel als base64 (aanbevolen) of als gewone tekst; verwijdert Windows-regeleinden.
-          if printf '%s' "$VM_SSH_KEY" | grep -q -- "-----BEGIN"; then
-            printf '%s\n' "$VM_SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
-          else
-            printf '%s' "$VM_SSH_KEY" | tr -d '[:space:]' | base64 -d > ~/.ssh/deploy_key || true
+          # Het secret mag base64 zijn (aanbevolen) of de sleutel als tekst. Regeleinden, spaties en
+          # Windows-tekens die bij het kopieren zijn veranderd, worden hieronder hersteld.
+          key=$(printf '%s' "$VM_SSH_KEY" | tr -d '\r')
+          vorm="tekst"
+          if ! printf '%s' "$key" | grep -q -- '-----BEGIN'; then
+            decoded=$(printf '%s' "$key" | tr -d '[:space:]' | base64 -d 2>/dev/null | tr -d '\0\r' || true)
+            if printf '%s' "$decoded" | grep -q -- '-----BEGIN'; then key=$decoded; vorm="base64"; fi
           fi
+          header=$(printf '%s' "$key" | grep -o -- '-----BEGIN [A-Z0-9 ]*-----' | head -n 1 || true)
+          footer=$(printf '%s' "$key" | grep -o -- '-----END [A-Z0-9 ]*-----' | head -n 1 || true)
+          body=$(printf '%s' "$key" | tr '\n' ' ' | sed -e 's/.*-----BEGIN [A-Z0-9 ]*-----//' -e 's/-----END [A-Z0-9 ]*-----.*//' | tr -d '[:space:]')
+          { echo "$header"; printf '%s\n' "$body" | fold -w 70; echo "$footer"; } > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          if ! ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null 2>&1; then
-            echo "::error::VM_SSH_KEY is geen geldige private sleutel. Maak het secret opnieuw aan met de uitvoer van: base64 -w0 ~/github_deploy_key"
+
+          if ! reden=$(ssh-keygen -y -P "" -f ~/.ssh/deploy_key 2>&1 > /dev/null); then
+            # Diagnose zonder de sleutel zelf te tonen.
+            echo "Lengte van het secret: ${#VM_SSH_KEY} tekens (base64 van een nieuwe sleutel is 532)"
+            echo "Herkend als: $vorm; begin gevonden: ${header:-nee}; einde gevonden: ${footer:-nee}"
+            echo "Melding van ssh-keygen: $reden"
+            case "$key" in
+              PuTTY-User-Key-File*) hint="Het secret bevat een PuTTY .ppk-bestand; dat formaat werkt hier niet." ;;
+              ssh-ed25519\ *|ssh-rsa\ *|ecdsa-*) hint="Het secret bevat de publieke sleutel (.pub) in plaats van de private." ;;
+              *) if [ -z "$header" ]; then hint="Er staat geen sleutel in het secret (geen BEGIN-regel gevonden)."
+                 elif [ -z "$footer" ]; then hint="De sleutel is afgekapt: het einde ontbreekt."
+                 elif printf '%s' "$reden" | grep -qi passphrase; then hint="De sleutel heeft een wachtwoord; maak er een zonder (ssh-keygen -N \"\")."
+                 else hint="De sleutel is beschadigd geraakt bij het kopieren."; fi ;;
+            esac
+            echo "::error::VM_SSH_KEY is geen geldige private sleutel. $hint Maak het secret opnieuw aan met de uitvoer van: base64 -w0 ~/github_deploy_key"
             exit 1
           fi
+          echo "Sleutel geldig ($vorm)."
           ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts
           {
             echo "Host vm"
