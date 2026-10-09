@@ -1,6 +1,6 @@
 """Gedeelde code voor de Citi Bike-notebooks van Kobe: vraag (vertrekken) per zone per uur.
 
-De notebooks (01 t/m 06) én de automatische retrain-pipeline (train.py) gebruiken deze functies,
+De notebooks (01 t/m 06) én train.py (dat het model voor de API schrijft) gebruiken deze functies,
 zodat de data overal op exact dezelfde manier verwerkt wordt.
 
 Overzicht:

@@ -25,7 +25,7 @@ def check(name, condition, detail=""):
 r = client.get("/health")
 check("/health", r.status_code == 200 and r.json().get("status") == "ok", r.text)
 
-for page in ["/", "/mushrooms.html", "/citi_bike.html", "/citi_bike_demand.html"]:
+for page in ["/", "/mushrooms.html", "/citi_bike_models.html", "/citi_bike.html", "/citi_bike_demand.html"]:
     r = client.get(page)
     check(f"pagina {page}", r.status_code == 200 and "text/html" in r.headers["content-type"], r.status_code)
 

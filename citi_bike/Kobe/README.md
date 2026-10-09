@@ -24,7 +24,7 @@ gemiste groene rit (thema *Going green*).
 | [05e_hist_gradient_boosting.ipynb](05e_hist_gradient_boosting.ipynb) | Gradient boosting (Poisson), randomized search + experiment met lag-kenmerken |
 | [06_model_comparison.ipynb](06_model_comparison.ipynb) | Vergelijking, bootstrap per dag, foutenanalyse, permutation importance, conclusie |
 
-Gedeelde code staat in [citibike.py](citibike.py): de notebooks en de pipeline verwerken de data zo op exact dezelfde manier.
+Gedeelde code staat in [citibike.py](citibike.py): de notebooks en `train.py` verwerken de data zo op exact dezelfde manier.
 
 ## Validatie
 
@@ -48,21 +48,19 @@ Gedeelde code staat in [citibike.py](citibike.py): de notebooks en de pipeline v
 
 De gemiddelde vraag is 168 vertrekken per zone per uur, dus het gedeployde model zit gemiddeld ± 17% naast. Het wint in alle 5 folds van elk ander model. De grootste fouten zitten op Kerstmis, Thanksgiving en de dagen errond, en bij zware regen (zie `06`).
 
-## Pipeline: van code naar productie
+## Van notebook naar productie
+
+Alle modellen worden lokaal getraind.
 
 ```
-push naar citi_bike/Kobe/ (data, features, best_params.json, train.py)
-  └─ .github/workflows/citi_bike_demand_retrain.yml
-       ├─ test_features.py      API en training berekenen dezelfde kenmerken?
-       ├─ train.py              hertrainen + kwaliteitspoort (MAE niet > 2% slechter dan productie)
-       ├─ deploy/check_model.py API werkt met het nieuwe model?
-       └─ pull request "Nieuw Citi Bike-vraagmodel" met deploy/citi_bike_demand/model.pkl
-            └─ merge → deploy-api.yml (Oracle VM, met rollback) → api_smoke_test.yml
+05e (tuning) -> models/best_params.json
+  -> train.py: hertrainen op heel 2024 + kwaliteitscontrole (MAE niet > 2% slechter dan het model dat er staat)
+  -> deploy/citi_bike_demand/model.pkl
+  -> pull request naar main -> merge -> deploy-api.yml (Oracle VM, met rollback) -> api_smoke_test.yml
 ```
 
-- `data/model_table.parquet` (2,3 MB) en `data/zones.json` staan in Git (uitzondering in `.gitignore`), zodat de pipeline kan trainen zonder 8,7 GB te downloaden. De ruwe zip's en tussenbestanden staan niet in Git; `01_download` maakt ze opnieuw.
-- **Vereiste repo-instelling:** *Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"*.
-- `make_features()` staat in `citibike.py` en (gekopieerd) in `deploy/citi_bike_demand/api.py`, omdat alleen `deploy/` naar de VM gaat. `test_features.py` faalt zodra de twee uit elkaar lopen.
+- `data/model_table.parquet` (2,3 MB) en `data/zones.json` staan in Git (uitzondering in `.gitignore`), zodat iedereen de modellen kan hertrainen zonder 8,7 GB te downloaden. De ruwe zip's en tussenbestanden staan niet in Git; `01_download` maakt ze opnieuw.
+- `make_features()` staat in `citibike.py` en (gekopieerd) in `deploy/citi_bike_demand/api.py`, omdat alleen `deploy/` naar de VM gaat. Draai `python -m pytest test_features.py` na een wijziging: de test faalt zodra de twee uit elkaar lopen.
 
 ## Lokaal uitvoeren
 

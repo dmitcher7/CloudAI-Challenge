@@ -29,10 +29,10 @@ Binnen beide dataset-mappen hebben we een strikte structuur gehanteerd om effici
 
 ```
 deploy/                      ← alles wat naar de VM gaat
-├── app.py                   ← start de API en koppelt beide modellen
+├── app.py                   ← start de API en koppelt alle modellen
 ├── requirements.txt         ← pakketten voor de VM
 ├── check_model.py           ← test API + modellen vóór elke deploy
-├── web/                     ← index.html (keuzepagina), mushrooms.html, citi_bike.html, citi_bike_demand.html
+├── web/                     ← index.html (keuzepagina), mushrooms.html, citi_bike_models.html (keuze Citi Bike), citi_bike.html, citi_bike_demand.html
 ├── mushrooms/               ← api.py + stacking.pkl
 ├── citi_bike/               ← api.py + model.pkl (ritduur)
 └── citi_bike_demand/        ← api.py + model.pkl (vraag per zone per uur, zie citi_bike/Kobe/)
@@ -40,16 +40,17 @@ deploy/                      ← alles wat naar de VM gaat
 
 | Adres | Wat |
 |---|---|
-| `/` | keuzepagina |
+| `/` | keuzepagina: mushrooms of Citi Bike |
+| `/citi_bike_models.html` | keuzepagina tussen de twee Citi Bike-modellen |
 | `/mushrooms.html`, `/citi_bike.html`, `/citi_bike_demand.html` | webpagina per model |
 | `GET /mushrooms/`, `POST /mushrooms/predict` | mushroom-model (eetbaar 0 / giftig 1) |
 | `GET /citi_bike/`, `POST /citi_bike/predict` | Citi Bike-model (ritduur in minuten) |
-| `GET /citi_bike_demand/`, `POST /citi_bike_demand/predict`, `POST /citi_bike_demand/predict_day` | Citi Bike-vraagmodel (vertrekken per zone per uur); hertraind via `.github/workflows/citi_bike_demand_retrain.yml` |
+| `GET /citi_bike_demand/`, `POST /citi_bike_demand/predict`, `POST /citi_bike_demand/predict_day` | Citi Bike-vraagmodel (vertrekken per zone per uur), zie `citi_bike/Kobe/` |
 | `/health`, `/docs` | status en Swagger |
 
 Lokaal starten: `cd deploy && pip install -r requirements.txt && uvicorn app:app --port 8000`.
 Testen: `python deploy/check_model.py`.
 
-Beide modellen draaien in hetzelfde proces en moeten dus met **dezelfde scikit-learn-versie** opgeslagen zijn
+Alle modellen draaien in hetzelfde proces en moeten dus met **dezelfde scikit-learn-versie** opgeslagen zijn
 als in `deploy/requirements.txt` (nu 1.4.2). Een merge naar `main` die iets in `deploy/` wijzigt, deployt
 automatisch via `.github/workflows/deploy-api.yml` (met rollback als de API niet start).
