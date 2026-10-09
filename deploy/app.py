@@ -46,6 +46,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def no_stale_pages(request: Request, call_next):
+    # Webpagina's altijd bij de server laten controleren (meestal een snel "304 niet gewijzigd"),
+    # zodat een browser na een deploy nooit een oude versie uit zijn cache toont.
+    response = await call_next(request)
+    if response.headers.get("content-type", "").startswith("text/html"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
 app.include_router(mushrooms_api.router, prefix="/mushrooms", dependencies=[Depends(check_api_key)])
 app.include_router(citi_bike_api.router, prefix="/citi_bike", dependencies=[Depends(check_api_key)])
 app.include_router(citi_bike_demand_api.router, prefix="/citi_bike_demand", dependencies=[Depends(check_api_key)])
