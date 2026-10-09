@@ -35,7 +35,7 @@ python -m src.models.train --data data/processed/trips.parquet
 uvicorn app.main:app --reload
 ```
 
-De ritdownload gebruikt standaard het volledige kalenderjaar 2024 (`2024-01` t/m `2024-12`) en kan daardoor meerdere GB groot zijn. `src.data.weather` downloadt voor dezelfde periode een compacte uur-weertabel voor New York. De training neemt standaard maximaal 500.000 deterministisch en gelijkmatig over het hele jaar verdeelde ritten, zodat alle seizoenen vertegenwoordigd blijven zonder onnodig geheugengebruik. Gebruik `--max-rows 0` alleen wanneer de machine alle rijen aankan. Open na training <http://127.0.0.1:8000>. Vermeld de gebruikte maanden en steekproefgrootte altijd in de presentatie.
+De ritdownload gebruikt standaard het volledige kalenderjaar 2024 (`2024-01` t/m `2024-12`) en kan daardoor meerdere GB groot zijn. `src.data.weather` downloadt voor dezelfde periode een compacte uur-weertabel voor New York. De training neemt standaard maximaal 1.000.000 deterministisch en gelijkmatig over het hele jaar verdeelde ritten, zodat alle seizoenen vertegenwoordigd blijven zonder onnodig geheugengebruik. Gebruik `--max-rows 0` alleen wanneer de machine alle rijen aankan. Open na training <http://127.0.0.1:8000>. Vermeld de gebruikte maanden en steekproefgrootte altijd in de presentatie.
 
 ## Notebookvolgorde
 
@@ -81,21 +81,23 @@ Historisch en verwacht weer komt van [Open-Meteo](https://open-meteo.com/). De t
 
 - naïeve mediaanbaseline;
 - Ridge op one-hot/cyclische features;
-- histogram gradient boosting;
+- histogram gradient boosting met log-, raw- en absolute-error-targetvarianten;
 - Extra Trees;
+- CatBoost met native categorische features;
 - FLAML als reproduceerbare AutoML-vergelijking (meegeleverd in `requirements.txt`);
 - SageMaker-training met dezelfde train/testgrens.
 
-De laatste 20% in de tijd is de hold-outset. Hyperparameters worden alleen op het eerdere train-gedeelte gekozen. Metrics staan na uitvoering in `reports/metrics.csv`; de uiteindelijke pipeline in `models/duration_model.joblib`. De API weigert te starten zonder getraind artifact, behalve met `ALLOW_FALLBACK_MODEL=true` voor een expliciete demo.
+De steekproef wordt chronologisch gesplitst: de eerste 80% is ontwikkeldata en de laatste 20% is de finale hold-out. Binnen de ontwikkeldata vormt opnieuw de laatste 20% de selectievalidatie. Kandidaten worden dus nooit op de finale hold-out gekozen. Om zowel nauwkeurigheid als verklaarde variantie te verbeteren, wint binnen 0,10 minuut van de beste validatie-MAE het model met de hoogste validatie-R². Route- en stationshistoriek gebruikt uitsluitend eerder waargenomen ritten. Selectiemetrics staan in `reports/metrics.csv`, de eenmalige eindscore in `reports/final_holdout_metrics.csv` en de stabiliteit per maand in `reports/metrics_by_month.csv`. De uiteindelijke pipeline staat in `models/duration_model.joblib`; zonder dit artifact weigert de API te starten.
 
 ### Uitgevoerde volledige-jaar-run
 
 De lokale reproduceerbare run op januari–december 2024 leverde 44.199.909 geldige ritten op. Voor
-modelvergelijking werden 500.000 ritten gelijkmatig over het jaar geselecteerd: 400.000 eerdere
-ritten voor training en de laatste 100.000 ritten als tijdshold-out. Met geplande bestemming,
-hemelsbrede afstand en uurweer haalde histogram gradient boosting een MAE van 3,19 minuten,
-tegenover 6,52 voor de mediaanbaseline. RMSE was 7,61 minuten en R² 0,491. De exacte waarden staan
-in `reports/`; notebooks 04 en 06 berekenen aanvullend hypothese- en subgroepresultaten.
+modelvergelijking werden 1.000.000 ritten gelijkmatig over het jaar geselecteerd: 640.000 voor
+selectietraining, 160.000 voor selectievalidatie en de laatste 200.000 als aparte finale tijdshold-out.
+Met geplande bestemming, geometrie, uurweer en lekvrije routehistoriek behaalde histogram gradient
+boosting op `log1p`-ritduur daar een MAE van 3,12 minuten, RMSE van 7,36 minuten en R² van 0,518.
+De maandelijkse hold-out-R² loopt van 0,488 in oktober tot 0,554 in december. De exacte waarden staan
+in `reports/`; notebooks 04, 06 en 08 berekenen aanvullend hypothese-, subgroep- en dashboardresultaten.
 
 ## Deployment
 

@@ -360,8 +360,9 @@ NOTEBOOKS = {
                 """
                 ## Evaluatieontwerp
 
-                De laatste 20% van ritten vormt de onaangeraakte hold-outset. Een random split zou
-                toekomstige stations- en gedragspatronen naar training lekken. MAE is primair; RMSE,
+                De laatste 20% van ritten vormt de finale hold-outset. Binnen de eerdere 80% wordt
+                opnieuw chronologisch gesplitst voor modelselectie. Een random split zou toekomstige
+                stations- en gedragspatronen naar training lekken. MAE is primair; RMSE,
                 MedAE en R² maken verschillende foutaspecten zichtbaar. Features bevatten uitsluitend
                 informatie die bij vertrek bekend is, inclusief de vooraf gekozen bestemming en
                 het weer op het geplande vertrekuur.
@@ -376,7 +377,7 @@ NOTEBOOKS = {
                     PROCESSED_DIR / "trips.parquet",
                     MODEL_DIR / "duration_model.joblib",
                     REPORT_DIR / "metrics.csv",
-                    max_rows=500_000,
+                    max_rows=1_000_000,
                     quick=False,
                 )
                 display(metrics.style.format({"mae_minutes":"{:.2f}", "rmse_minutes":"{:.2f}", "r2":"{:.3f}"}))
@@ -388,9 +389,10 @@ NOTEBOOKS = {
 
                 De mediaan is de eerlijke naïeve referentie. Ridge test een eenvoudige lineaire relatie.
                 Histogram Gradient Boosting vangt niet-lineaire interacties efficiënt. Extra Trees kan
-                complexere stations- en tijdspatronen leren, maar overfit makkelijker. De target krijgt
-                een log1p-transformatie wegens de lange rechterstaart. De hemelsbrede afstand is een
-                lekvrije ondergrens voor de routeafstand, omdat de bestemming vooraf wordt ingevoerd.
+                complexere stations- en tijdspatronen leren, maar overfit makkelijker. CatBoost verwerkt
+                stations als echte categorieën. Zowel een log1p-target als directe duurtraining worden
+                vergeleken. De afstand en uitsluitend uit eerdere ritten opgebouwde routehistorie geven
+                routecontext zonder informatie uit de toekomst te lekken.
                 """
             ),
             md("## AutoML (FLAML)\n\nFLAML vervangt hier PyCaret als toegestane AutoML-vergelijking. Het tijdsbudget maakt de run reproduceerbaar qua kosten; de uitkomst kan per hardware iets verschillen."),
@@ -422,13 +424,13 @@ NOTEBOOKS = {
                 import seaborn as sns
                 from src.config import MODEL_DIR, PROCESSED_DIR, REPORT_DIR, TARGET, WEATHER_PATH
                 from src.data.weather import attach_hourly_weather
-                from src.features.build import make_features
+                from src.models.predict import predict_rows
                 from src.models.train import temporal_split
 
                 metrics = pd.read_csv(REPORT_DIR / "metrics.csv").sort_values("mae_minutes")
                 display(metrics)
                 ax = metrics.plot.barh(x="model", y="mae_minutes", legend=False, color="#4f8f67")
-                ax.set(xlabel="hold-out MAE (minuten)", ylabel="", title="Lagere fout is beter")
+                ax.set(xlabel="selectievalidatie-MAE (minuten)", ylabel="", title="Lagere fout is beter")
                 plt.show()
                 """
             ),
@@ -441,12 +443,12 @@ NOTEBOOKS = {
                     "end_station_id", "start_lat", "start_lng", "end_lat", "end_lng", TARGET,
                 ]
                 frame = pd.read_parquet(PROCESSED_DIR / "trips.parquet", columns=columns).sort_values("started_at")
-                if len(frame) > 500_000:
-                    frame = frame.iloc[np.linspace(0, len(frame)-1, 500_000, dtype=int)]
+                if len(frame) > 1_000_000:
+                    frame = frame.iloc[np.linspace(0, len(frame)-1, 1_000_000, dtype=int)]
                 frame = attach_hourly_weather(frame, WEATHER_PATH)
                 _, test = temporal_split(frame)
                 test = test.copy()
-                test["prediction"] = np.maximum(0, bundle["model"].predict(make_features(test)))
+                test["prediction"] = predict_rows(bundle, test)
                 test["error"] = test.prediction - test[TARGET]
                 test["absolute_error"] = test.error.abs()
                 display(test.nlargest(20, "absolute_error"))
@@ -535,7 +537,7 @@ NOTEBOOKS = {
                     instance_count=1,
                     framework_version="1.2-1",
                     py_version="py3",
-                    hyperparameters={"max-rows": 500000},
+                    hyperparameters={"max-rows": 1000000},
                     output_path=f"s3://{bucket}/{prefix}/output",
                     base_job_name="citibike-duration",
                 )
@@ -574,7 +576,7 @@ NOTEBOOKS = {
                 Dit notebook traint niets opnieuw. Het leest de bestaande jaargegevens, het gekozen
                 model en de opgeslagen metrics. Voor grafieken gebruiken we een systematische
                 steekproef uit het volledige Parquet-bestand; de officiële modelmetrics blijven de
-                waarden uit de chronologische hold-out van 100.000 ritten.
+                waarden uit de opgeslagen chronologische hold-out.
 
                 De historische eindlocatie wordt hier geïnterpreteerd als proxy voor een **vooraf
                 geplande bestemming**. Zonder bekende bestemming mag deze informatie niet als feature
@@ -595,9 +597,37 @@ NOTEBOOKS = {
                 from src.config import MODEL_DIR, MODEL_FEATURES, PROCESSED_DIR, REPORT_DIR, TARGET, WEATHER_PATH
                 from src.data.sample import systematic_parquet_sample
                 from src.data.weather import attach_hourly_weather
-                from src.features.build import make_features
+                from src.models.predict import features_for_bundle
 
-                sns.set_theme(style="whitegrid", palette="crest")
+                COLORS = {
+                    "navy": "#17324D",
+                    "teal": "#0F766E",
+                    "sky": "#3B82A0",
+                    "gold": "#E6A23C",
+                    "coral": "#D95D39",
+                    "purple": "#6D5BD0",
+                    "grey": "#A8B0B8",
+                    "light": "#E8F0F2",
+                }
+                SERIES_PALETTE = [
+                    COLORS["teal"], COLORS["gold"], COLORS["sky"],
+                    COLORS["coral"], COLORS["purple"], COLORS["navy"],
+                ]
+                sns.set_theme(
+                    context="notebook",
+                    style="whitegrid",
+                    font_scale=1.05,
+                    palette=SERIES_PALETTE,
+                    rc={
+                        "axes.facecolor": "#F8FAFB",
+                        "figure.facecolor": "white",
+                        "axes.edgecolor": "#CBD5E1",
+                        "grid.color": "#DFE7EB",
+                        "grid.linewidth": 0.8,
+                        "axes.titleweight": "bold",
+                        "axes.titlesize": 13,
+                    },
+                )
                 SAMPLE_ROWS = 300_000
                 DATA_COLUMNS = [
                     "started_at", "rideable_type", "member_casual", "start_station_id",
@@ -608,11 +638,21 @@ NOTEBOOKS = {
                     PROCESSED_DIR / "trips.parquet", max_rows=SAMPLE_ROWS, columns=DATA_COLUMNS
                 ).sort_values("started_at").reset_index(drop=True)
                 trips = attach_hourly_weather(trips, WEATHER_PATH)
-                feature_frame = make_features(trips).reset_index(drop=True)
+                bundle = joblib.load(MODEL_DIR / "duration_model.joblib")
+                feature_frame = features_for_bundle(bundle, trips).reset_index(drop=True)
+                model_features = list(bundle.get("features", MODEL_FEATURES))
+                missing_model_features = [
+                    feature for feature in model_features if feature not in feature_frame.columns
+                ]
+                if missing_model_features:
+                    raise RuntimeError(
+                        "Het model en de dashboardcode horen bij verschillende versies. "
+                        "Herstart de kernel en voer alle cellen opnieuw uit. Ontbrekend: "
+                        + ", ".join(missing_model_features)
+                    )
                 dashboard = pd.concat(
                     [trips[["started_at", TARGET]].reset_index(drop=True), feature_frame], axis=1
                 )
-                bundle = joblib.load(MODEL_DIR / "duration_model.joblib")
                 metrics = pd.read_csv(REPORT_DIR / "metrics.csv").sort_values("mae_minutes")
                 audit = json.loads((PROCESSED_DIR / "cleaning_audit.json").read_text())
 
@@ -622,14 +662,15 @@ NOTEBOOKS = {
                 if len(holdout) > 50_000:
                     holdout = holdout.sample(50_000, random_state=42)
                 holdout["prediction"] = np.clip(
-                    bundle["model"].predict(holdout[MODEL_FEATURES]), 0, 180
+                    bundle["model"].predict(holdout[model_features]), 0, 180
                 )
                 holdout["error"] = holdout.prediction - holdout[TARGET]
                 holdout["absolute_error"] = holdout.error.abs()
 
                 print(
                     f"Dashboardsteekproef: {len(dashboard):,} van {audit['output_rows']:,} ritten | "
-                    f"dashboard-hold-out: {len(holdout):,} ritten"
+                    f"dashboard-hold-out: {len(holdout):,} ritten | "
+                    f"model-features: {len(model_features)}"
                 )
                 """
             ),
@@ -642,10 +683,10 @@ NOTEBOOKS = {
                 | Dataverzameling | Geautomatiseerde maanddownloads, ZIP-validatie, SHA-256-manifest en externe uurweerdata |
                 | Dataverwerking | Chunk processing, schemaharmonisatie, typeconversie, plausibiliteitsfilters, deduplicatie en Parquet |
                 | Statistiek | Eenzijdige Mann–Whitney-U-toets, bootstrap-BI voor mediaanverschil en Cliff's delta |
-                | Leakagepreventie | Alleen vertrek- en planningsinformatie, chronologische 80/20-split en een onaangeraakte toekomstige hold-out |
-                | Feature engineering | Cyclische tijdcodering, weekend/feestdag, Haversine-afstand, geografische delta's en uurweer |
+                | Leakagepreventie | Alleen vertrek- en planningsinformatie, geneste chronologische selectie en een aparte toekomstige eindtest |
+                | Feature engineering | Cyclische tijdcodering, weekend/feestdag, Haversine- en gridafstand, richting, uurweer en time-safe routehistorie |
                 | Preprocessing | Mediaanimputatie, meest-frequente imputatie, one-hot encoding voor Ridge en ordinal encoding voor boommodellen |
-                | Modellen | Mediaanbaseline, Ridge-regressie, Histogram Gradient Boosting, Extra Trees en optioneel FLAML AutoML |
+                | Modellen | Mediaanbaseline, Ridge, Histogram Gradient Boosting op log/raw/absolute target, Extra Trees, CatBoost en optioneel FLAML |
                 | Targetbehandeling | `log1p` tegen de lange rechterstaart, veilige inverse transformatie en begrenzing tot het geldige doelbereik |
                 | Evaluatie | MAE als primaire metric, daarnaast RMSE, MedAE, R², subgroepanalyse, residuen en permutation importance |
                 | Deployment | Geserialiseerde sklearn-pipeline, FastAPI, Pydantic-validatie, webfrontend, Docker, GitHub Actions en SageMaker-entrypoint |
@@ -658,31 +699,42 @@ NOTEBOOKS = {
             md("## Kerncijfers en cleaning\n\nDe filterredenen zijn niet exclusief: één ongeldige rij kan in meerdere categorieën meetellen."),
             code(
                 """
-                winner = metrics.iloc[0]
+                winner = metrics.loc[metrics.model == bundle["model_name"]].iloc[0]
                 baseline = metrics.loc[metrics.model == "median_baseline"].iloc[0]
                 improvement = 100 * (baseline.mae_minutes - winner.mae_minutes) / baseline.mae_minutes
+                final_metrics = pd.Series(bundle["metrics"])
 
                 fig, axes = plt.subplots(1, 2, figsize=(14, 4.5))
                 axes[0].axis("off")
+                axes[0].set_facecolor(COLORS["light"])
                 kpi_text = (
                     f"{audit['output_rows']:,} geldige ritten\\n"
                     f"{bundle['model_name']} geselecteerd\\n"
-                    f"MAE {winner.mae_minutes:.2f} minuten\\n"
-                    f"R² {winner.r2:.3f}\\n"
-                    f"{improvement:.1f}% lagere MAE dan baseline"
+                    f"Finale MAE {final_metrics.mae_minutes:.2f} minuten\\n"
+                    f"Finale R² {final_metrics.r2:.3f}\\n"
+                    f"{improvement:.1f}% lagere selectie-MAE dan baseline"
                 )
-                axes[0].text(0.02, 0.95, kpi_text, va="top", fontsize=17, linespacing=1.55)
+                axes[0].text(
+                    0.06, 0.90, kpi_text, va="top", fontsize=17, linespacing=1.55,
+                    color=COLORS["navy"], weight="semibold",
+                    bbox={"boxstyle": "round,pad=0.8", "facecolor": COLORS["light"],
+                          "edgecolor": COLORS["teal"], "linewidth": 1.5},
+                )
                 cleaning = pd.Series(
                     {"Ruw": audit["input_rows"], "Geldig": audit["output_rows"]}
                 ) / 1_000_000
-                cleaning.plot.bar(ax=axes[1], color=["#9aa7a0", "#4f8f67"])
+                cleaning.plot.bar(ax=axes[1], color=[COLORS["grey"], COLORS["teal"]])
                 axes[1].set(title="Cleaningresultaat", ylabel="miljoen ritten", xlabel="")
                 axes[1].tick_params(axis="x", rotation=0)
                 plt.tight_layout()
-                display(metrics.style.format({
-                    "mae_minutes": "{:.2f}", "rmse_minutes": "{:.2f}",
-                    "median_ae_minutes": "{:.2f}", "r2": "{:.3f}",
-                }))
+                display(
+                    metrics.style
+                    .format({
+                        "mae_minutes": "{:.2f}", "rmse_minutes": "{:.2f}",
+                        "median_ae_minutes": "{:.2f}", "r2": "{:.3f}",
+                    })
+                    .background_gradient(subset=["r2"], cmap="YlGnBu")
+                )
                 """
             ),
             md("## Alle modelfeatures\n\nDe tabel maakt zichtbaar welke variabelen ruw, afgeleid of extern zijn en hoeveel waarden in de dashboardsteekproef ontbreken."),
@@ -699,8 +751,15 @@ NOTEBOOKS = {
                         ("end_lat", "numeriek", "planning", "Latitude bestemming"),
                         ("end_lng", "numeriek", "planning", "Longitude bestemming"),
                         ("direct_distance_km", "numeriek", "afgeleid", "Hemelsbrede Haversine-afstand"),
+                        ("grid_distance_km", "numeriek", "afgeleid", "Afstand volgens de gedraaide NYC-gridassen"),
                         ("delta_lat", "numeriek", "afgeleid", "Noord-zuidverplaatsing"),
                         ("delta_lng", "numeriek", "afgeleid", "Oost-westverplaatsing"),
+                        ("bearing_sin", "cyclisch", "afgeleid", "Sinus van reisrichting"),
+                        ("bearing_cos", "cyclisch", "afgeleid", "Cosinus van reisrichting"),
+                        ("route_typical_minutes", "numeriek", "historisch", "Gesmoothde eerdere duur voor start-eindpaar"),
+                        ("route_history_log_count", "numeriek", "historisch", "Logaritme van eerdere ritten op de route"),
+                        ("start_typical_minutes", "numeriek", "historisch", "Gesmoothde eerdere duur vanaf startstation"),
+                        ("end_typical_minutes", "numeriek", "historisch", "Gesmoothde eerdere duur naar eindstation"),
                         ("start_hour_sin", "cyclisch", "afgeleid", "Sinus van vertrekuur"),
                         ("start_hour_cos", "cyclisch", "afgeleid", "Cosinus van vertrekuur"),
                         ("weekday_sin", "cyclisch", "afgeleid", "Sinus van weekdag"),
@@ -737,17 +796,26 @@ NOTEBOOKS = {
                 )
 
                 fig, axes = plt.subplots(1, 3, figsize=(17, 4.5))
-                sns.barplot(data=month, x="month", y="estimated_million_rides", ax=axes[0], color="#4f8f67")
-                sns.lineplot(data=month, x="month", y="median_minutes", marker="o", ax=axes[1])
-                sns.lineplot(data=month, x="month", y="casual_share", marker="o", ax=axes[2])
+                sns.barplot(data=month, x="month", y="estimated_million_rides", ax=axes[0], color=COLORS["teal"])
+                sns.lineplot(data=month, x="month", y="median_minutes", marker="o", ax=axes[1], color=COLORS["gold"], linewidth=2.5)
+                sns.lineplot(data=month, x="month", y="casual_share", marker="o", ax=axes[2], color=COLORS["purple"], linewidth=2.5)
                 axes[0].set(title="Geschat ritvolume", ylabel="miljoen ritten")
                 axes[1].set(title="Mediane ritduur", ylabel="minuten")
                 axes[2].set(title="Aandeel casual riders", ylabel="aandeel")
                 plt.tight_layout()
 
                 fig, axes = plt.subplots(1, 2, figsize=(14, 4.5))
-                sns.countplot(data=plot_data, x="member_casual", ax=axes[0])
-                sns.countplot(data=plot_data, x="rideable_type", ax=axes[1])
+                sns.countplot(
+                    data=plot_data, x="member_casual", hue="member_casual",
+                    palette={"member": COLORS["teal"], "casual": COLORS["gold"]},
+                    legend=False, ax=axes[0],
+                )
+                bike_levels = list(plot_data["rideable_type"].dropna().unique())
+                bike_palette = dict(zip(bike_levels, SERIES_PALETTE, strict=False))
+                sns.countplot(
+                    data=plot_data, x="rideable_type", hue="rideable_type",
+                    palette=bike_palette, legend=False, ax=axes[1],
+                )
                 axes[0].set(title="Ritten per gebruikerstype", xlabel="")
                 axes[1].set(title="Ritten per fietstype", xlabel="")
                 plt.tight_layout()
@@ -770,10 +838,10 @@ NOTEBOOKS = {
                 fig, axes = plt.subplots(1, 2, figsize=(15, 5))
                 axes[0].hexbin(
                     route_plot.direct_distance_km, route_plot[TARGET], gridsize=45,
-                    mincnt=1, bins="log", cmap="viridis", extent=(0, 12, 0, 90),
+                    mincnt=1, bins="log", cmap="mako", extent=(0, 12, 0, 90),
                 )
                 axes[0].set(xlabel="hemelsbrede afstand (km)", ylabel="ritduur (min)", title="Afstand versus ritduur")
-                sns.barplot(data=distance_summary, x="distance_band", y="median_minutes", ax=axes[1], color="#4f8f67")
+                sns.barplot(data=distance_summary, x="distance_band", y="median_minutes", ax=axes[1], color=COLORS["sky"])
                 axes[1].set(xlabel="afstandsklasse (km)", ylabel="mediane minuten", title="Typische duur per afstand")
                 axes[1].tick_params(axis="x", rotation=35)
                 plt.tight_layout()
@@ -797,8 +865,15 @@ NOTEBOOKS = {
                 ).reset_index()
 
                 fig, axes = plt.subplots(1, 2, figsize=(14, 4.5))
-                sns.lineplot(data=temperature, x="temperature_label", y="median_minutes", marker="o", ax=axes[0])
-                sns.barplot(data=rain, x="rain", y="median_minutes", ax=axes[1])
+                sns.lineplot(
+                    data=temperature, x="temperature_label", y="median_minutes",
+                    marker="o", color=COLORS["coral"], linewidth=2.5, ax=axes[0],
+                )
+                rain_palette = {"droog": COLORS["gold"], "neerslag": COLORS["sky"]}
+                sns.barplot(
+                    data=rain, x="rain", y="median_minutes", hue="rain",
+                    palette=rain_palette, legend=False, ax=axes[1],
+                )
                 axes[0].set(title="Ritduur per temperatuurklasse", xlabel="temperatuur °C", ylabel="mediane minuten")
                 axes[0].tick_params(axis="x", rotation=35)
                 axes[1].set(title="Droog versus neerslag", xlabel="", ylabel="mediane minuten")
@@ -806,17 +881,57 @@ NOTEBOOKS = {
                 display(pd.concat({"temperatuur": temperature, "regen": rain}, names=["analyse"]))
                 """
             ),
-            md("## Modelvergelijking\n\nDe winnaar wordt uitsluitend gekozen op de laagste MAE in de toekomstige hold-outperiode."),
+            md("## Modelvergelijking op selectievalidatie\n\nDe finale hold-out blijft buiten de modelkeuze. Van de kandidaten binnen 0,10 minuut van de beste validatie-MAE kiezen we de hoogste validatie-R²; daarna wordt alleen de winnaar opnieuw getraind en één keer op de eindtest gemeten."),
             code(
                 """
+                model_colors = {
+                    model: (
+                        COLORS["coral"] if model == bundle["model_name"]
+                        else COLORS["gold"] if model == "median_baseline"
+                        else COLORS["sky"]
+                    )
+                    for model in metrics.model
+                }
                 fig, axes = plt.subplots(1, 3, figsize=(17, 4.5))
-                sns.barplot(data=metrics, y="model", x="mae_minutes", ax=axes[0], color="#4f8f67")
-                sns.barplot(data=metrics, y="model", x="rmse_minutes", ax=axes[1], color="#708f80")
-                sns.barplot(data=metrics, y="model", x="r2", ax=axes[2], color="#9bb7a8")
+                for axis, metric_name in zip(axes, ["mae_minutes", "rmse_minutes", "r2"]):
+                    sns.barplot(
+                        data=metrics, y="model", x=metric_name, hue="model",
+                        palette=model_colors, legend=False, ax=axis,
+                    )
                 axes[0].set(title="MAE — lager is beter", xlabel="minuten", ylabel="")
                 axes[1].set(title="RMSE — lager is beter", xlabel="minuten", ylabel="")
                 axes[2].set(title="R² — hoger is beter", xlabel="R²", ylabel="")
                 plt.tight_layout()
+
+                generalization = pd.DataFrame([
+                    {
+                        "split": "training",
+                        "mae_minutes": bundle["training_metrics"]["mae_minutes"],
+                        "r2": bundle["training_metrics"]["r2"],
+                    },
+                    {
+                        "split": "finale Q4-hold-out",
+                        "mae_minutes": bundle["metrics"]["mae_minutes"],
+                        "r2": bundle["metrics"]["r2"],
+                    },
+                ])
+                monthly = pd.DataFrame(bundle["monthly_holdout_metrics"])
+                fig, axes = plt.subplots(1, 2, figsize=(14, 4.5))
+                sns.barplot(
+                    data=generalization, x="split", y="mae_minutes", hue="split",
+                    palette={"training": COLORS["navy"], "finale Q4-hold-out": COLORS["teal"]},
+                    legend=False, ax=axes[0],
+                )
+                sns.lineplot(
+                    data=monthly, x="month", y="r2", marker="o", ax=axes[1],
+                    color=COLORS["teal"], linewidth=2.5,
+                )
+                axes[1].fill_between(monthly["month"], monthly["r2"], alpha=0.15, color=COLORS["teal"])
+                axes[0].set(title="Training versus finale test", xlabel="", ylabel="MAE (minuten)")
+                axes[1].set(title="Stabiliteit binnen de finale test", xlabel="maand", ylabel="R²")
+                axes[1].tick_params(axis="x", rotation=25)
+                plt.tight_layout()
+                display(generalization, monthly)
                 """
             ),
             md(
@@ -832,18 +947,19 @@ NOTEBOOKS = {
                 """
                 importance_sample = holdout.sample(min(12_000, len(holdout)), random_state=42)
                 permutation = permutation_importance(
-                    bundle["model"], importance_sample[MODEL_FEATURES], importance_sample[TARGET],
+                    bundle["model"], importance_sample[model_features], importance_sample[TARGET],
                     scoring="neg_mean_absolute_error", n_repeats=3, random_state=42, n_jobs=1,
                 )
                 importance = pd.DataFrame({
-                    "feature": MODEL_FEATURES,
+                    "feature": model_features,
                     "mae_increase": permutation.importances_mean,
                     "std": permutation.importances_std,
                 }).sort_values("mae_increase", ascending=False)
 
                 top = importance.head(15).sort_values("mae_increase")
                 plt.figure(figsize=(9, 6))
-                plt.barh(top.feature, top.mae_increase, xerr=top["std"], color="#4f8f67")
+                importance_colors = sns.color_palette("crest", n_colors=len(top))
+                plt.barh(top.feature, top.mae_increase, xerr=top["std"], color=importance_colors)
                 plt.xlabel("toename MAE na permutatie (minuten)")
                 plt.title("Welke features gebruikt het model het sterkst?")
                 plt.tight_layout()
@@ -856,12 +972,12 @@ NOTEBOOKS = {
                 fig, axes = plt.subplots(1, 2, figsize=(14, 5))
                 axes[0].hexbin(
                     holdout[TARGET], holdout.prediction, gridsize=45, mincnt=1,
-                    bins="log", cmap="viridis", extent=(0, 80, 0, 80),
+                    bins="log", cmap="mako", extent=(0, 80, 0, 80),
                 )
-                axes[0].plot([0, 80], [0, 80], "--", color="white", linewidth=2)
+                axes[0].plot([0, 80], [0, 80], "--", color=COLORS["coral"], linewidth=2.5)
                 axes[0].set(xlabel="werkelijke minuten", ylabel="voorspelde minuten", title="Werkelijk versus voorspeld")
-                sns.histplot(holdout.error.clip(-40, 40), bins=70, ax=axes[1], color="#4f8f67")
-                axes[1].axvline(0, color="black", linestyle="--")
+                sns.histplot(holdout.error.clip(-40, 40), bins=70, ax=axes[1], color=COLORS["teal"])
+                axes[1].axvline(0, color=COLORS["coral"], linestyle="--", linewidth=2)
                 axes[1].set(xlabel="voorspelling − werkelijkheid (minuten)", title="Verdeling van residuen")
                 plt.tight_layout()
                 """
@@ -885,7 +1001,13 @@ NOTEBOOKS = {
                 subgroup = pd.concat(subgroup_tables, ignore_index=True)
 
                 plt.figure(figsize=(11, 5))
-                sns.barplot(data=subgroup, x="groep", y="mae", hue="dimensie")
+                subgroup_palette = {
+                    "member_casual": COLORS["teal"],
+                    "rideable_type": COLORS["gold"],
+                    "weekpart": COLORS["purple"],
+                    "weather": COLORS["sky"],
+                }
+                sns.barplot(data=subgroup, x="groep", y="mae", hue="dimensie", palette=subgroup_palette)
                 plt.ylabel("MAE (minuten)")
                 plt.xlabel("")
                 plt.title("Voorspelfout per subgroep")
@@ -914,9 +1036,11 @@ NOTEBOOKS = {
                 weakest = subgroup.loc[subgroup.mae.idxmax()]
                 display(Markdown(
                     f'''
-                    Het geselecteerde **{bundle['model_name']}**-model behaalt een hold-out-MAE van
+                    Het geselecteerde **{bundle['model_name']}**-model behaalt op de aparte finale
+                    hold-out een MAE van **{final_metrics.mae_minutes:.2f} minuten** en R² van
+                    **{final_metrics.r2:.3f}**. Op de selectievalidatie was de MAE
                     **{winner.mae_minutes:.2f} minuten**, tegenover **{baseline.mae_minutes:.2f}** voor
-                    de mediaanbaseline. Dat is een verbetering van **{improvement:.1f}%**. De sterkste
+                    de mediaanbaseline: een verbetering van **{improvement:.1f}%**. De sterkste
                     feature in deze permutation-analyse is **`{top_feature.feature}`**; permuteren
                     verhoogt de MAE met ongeveer **{top_feature.mae_increase:.2f} minuten**. De zwakste
                     gerapporteerde subgroep is **{weakest.groep}** met MAE **{weakest.mae:.2f} minuten**.

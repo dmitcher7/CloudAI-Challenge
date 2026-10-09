@@ -11,7 +11,7 @@ from src.models.train import train_and_compare
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--max-rows", type=int, default=500_000)
+    parser.add_argument("--max-rows", type=int, default=1_000_000)
     args = parser.parse_args()
     train_dir = Path(os.environ.get("SM_CHANNEL_TRAIN", "/opt/ml/input/data/train"))
     model_dir = Path(os.environ.get("SM_MODEL_DIR", "/opt/ml/model"))
