@@ -15,7 +15,7 @@
       .eyebrow,.card-head,footer { font-family:"DM Mono",monospace; text-transform:uppercase; letter-spacing:.08em; font-size:12px; }
       .eyebrow::before { content:""; display:inline-block; width:36px; border-top:2px solid; margin:0 12px 3px 0; }
       h1 { font-size:clamp(52px,7vw,98px); line-height:.88; letter-spacing:-.065em; margin:34px 0; max-width:680px; }
-      h1 em { font-style:normal; position:relative; z-index:0; }
+      h1 em { font-style:normal; position:relative; z-index:0; white-space:nowrap; }
       h1 em::after { content:""; position:absolute; left:-.02em; right:-.07em; bottom:.03em; height:.24em; background:var(--acid); z-index:-1; transform:rotate(-1deg); }
       .lead { color:var(--muted); font-size:18px; line-height:1.65; max-width:540px; }
       .facts { display:flex; gap:30px; border-top:1px solid var(--line); margin-top:50px; padding-top:22px; }
@@ -25,9 +25,9 @@
       .models { display:grid; gap:28px; }
       a.card { display:block; background:#fff; border:1px solid var(--ink); padding:30px; box-shadow:12px 12px 0 var(--ink); color:inherit; text-decoration:none; transition:transform .12s, box-shadow .12s; }
       a.card:hover { transform:translate(-3px,-3px); box-shadow:15px 15px 0 var(--ink); }
-      .card-head { display:flex; justify-content:space-between; border-bottom:1px solid var(--line); padding-bottom:16px; }
-      .card-head p { margin:0; }
-      .status { color:#9b6210; }
+      .card-head { display:flex; justify-content:space-between; gap:16px; border-bottom:1px solid var(--line); padding-bottom:16px; }
+      .card-head p { margin:0; white-space:nowrap; }
+      .status { color:#9b6210; text-align:right; }
       .status.ok { color:#317338; }
       h2 { font-size:30px; letter-spacing:-.04em; margin:22px 0 10px; }
       .card p.text { margin:0; color:var(--muted); line-height:1.6; }
@@ -35,7 +35,17 @@
       a.card:hover .go { background:var(--acid); color:var(--ink); }
       footer { position:relative; border-top:1px solid var(--line); max-width:1180px; margin:auto; padding:25px 32px; display:flex; justify-content:space-between; }
       footer a { color:inherit; }
-      @media(max-width:800px){ main{grid-template-columns:1fr;padding-top:50px}.facts{margin-top:30px}a.card{box-shadow:7px 7px 0}h1{font-size:58px} }
+      .lead code { font-family:"DM Mono",monospace; font-size:.9em; }
+      /* Breed scherm: links staat vast, alleen de kolom met modellen scrolt. */
+      @media(min-width:801px){
+        html,body { height:100%; overflow:hidden; }
+        body { display:flex; flex-direction:column; }
+        main { flex:1; min-height:0; width:100%; padding:0 32px; align-items:stretch; }
+        .intro { align-self:center; }
+        .models { overflow-y:auto; min-height:0; align-content:start; padding:8vh 24px 48px 6px; scrollbar-width:thin; }
+        footer { width:100%; flex-shrink:0; }
+      }
+      @media(max-width:800px){ main{grid-template-columns:1fr;padding:50px 16px 48px}.facts{margin-top:30px;flex-wrap:wrap;gap:16px 30px}a.card{box-shadow:7px 7px 0}h1{font-size:58px}footer{padding:25px 16px} }
     </style>
   </head>
   <body>
@@ -43,11 +53,11 @@
       <section class="intro">
         <p class="eyebrow">CLOUDAI CHALLENGE · GIT PUSH &amp; PRAY</p>
         <h1>Twee datasets, <em>één API.</em></h1>
-        <p class="lead">Beide modellen draaien op dezelfde Oracle VM en worden automatisch gedeployed bij elke merge naar main. Kies hiernaast een model om het uit te proberen.</p>
+        <p class="lead">Drie modellen voor twee datasets draaien samen in één FastAPI-app op een Oracle VM. De modellen worden lokaal getraind; een merge naar main die iets in <code>deploy/</code> wijzigt, zet ze automatisch op de server. Kies een model om het uit te proberen.</p>
         <div class="facts">
           <div><span>01</span><p>FastAPI op Oracle Cloud</p></div>
-          <div><span>02</span><p>CI/CD met GitHub Actions</p></div>
-          <div><span>03</span><p>Automatische rollback</p></div>
+          <div><span>02</span><p>Deploy via GitHub Actions</p></div>
+          <div><span>03</span><p>Rollback + dagelijkse test</p></div>
         </div>
       </section>
 
@@ -58,11 +68,11 @@
           <p class="text">Eetbaar of giftig? Voorspelling op basis van hoed, steel en vindplaats.</p>
           <div class="go">Probeer het model <span>→</span></div>
         </a>
-        <a class="card" href="citi_bike.html">
-          <div class="card-head"><p>Regressie</p><span id="citi_bike-status" class="status">controleren…</span></div>
+        <a class="card" href="citi_bike_models.html">
+          <div class="card-head"><p>Regressie · 2 modellen</p><span id="citi_bike-status" class="status">controleren…</span></div>
           <h2>🚲 Citi Bike</h2>
-          <p class="text">Hoe lang ben je onderweg? Schatting van de ritduur op basis van vertrekmoment en station.</p>
-          <div class="go">Probeer het model <span>→</span></div>
+          <p class="text">Hoe lang duurt een rit, en hoeveel fietsen vertrekken er per uur in een zone? Twee modellen op de Citi Bike-data van New York.</p>
+          <div class="go">Kies een model <span>→</span></div>
         </a>
       </section>
     </main>
@@ -73,16 +83,22 @@
         || (location.protocol.startsWith("http") ? location.origin : "http://89.168.73.76:8000");
       document.getElementById("docs").href = `${API_URL}/docs`;
 
-      for (const name of ["mushrooms", "citi_bike"]) {
-        const element = document.getElementById(`${name}-status`);
-        fetch(`${API_URL}/${name}/`)
-          .then((response) => response.json())
-          .then((info) => {
-            element.textContent = `${info.model} · online`;
-            element.classList.add("ok");
-          })
-          .catch(() => { element.textContent = "offline"; });
-      }
+      const status = (id, text, ok) => {
+        const element = document.getElementById(id);
+        element.textContent = text;
+        element.classList.toggle("ok", ok);
+      };
+      const info = (name) => fetch(`${API_URL}/${name}/`).then((response) => response.json());
+
+      info("mushrooms")
+        .then((data) => status("mushrooms-status", `${data.model} · online`, true))
+        .catch(() => status("mushrooms-status", "offline", false));
+
+      // Eén kaart voor beide Citi Bike-modellen: tel hoeveel er online zijn.
+      Promise.allSettled([info("citi_bike"), info("citi_bike_demand")]).then((results) => {
+        const online = results.filter((r) => r.status === "fulfilled" && r.value.model).length;
+        status("citi_bike-status", `${online}/2 online`, online === 2);
+      });
     </script>
   </body>
 </html>

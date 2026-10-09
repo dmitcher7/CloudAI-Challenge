@@ -18,8 +18,22 @@ def test_training_and_prediction_roundtrip(tmp_path: Path, monkeypatch):
     assert model_path.exists()
     assert metrics["mae_minutes"].notna().all()
     assert bundle["model_name"] in set(metrics["model"])
+    assert metrics["selected"].sum() == 1
+    assert metrics.loc[metrics["selected"], "model"].iloc[0] == bundle["model_name"]
+    assert bundle["metrics"]["test_rows"] > 0
+    assert bundle["route_history_summary"]["routes"] > 0
 
     monkeypatch.setattr(web, "MODEL_PATH", model_path)
+    monkeypatch.setattr(
+        web,
+        "forecast_weather_at",
+        lambda *_: {
+            "temperature_2m": 22.0,
+            "relative_humidity_2m": 60.0,
+            "precipitation": 0.0,
+            "wind_speed_10m": 10.0,
+        },
+    )
     web.model_bundle.cache_clear()
     client = TestClient(web.app)
     assert client.get("/health").json()["status"] == "ok"
@@ -32,10 +46,13 @@ def test_training_and_prediction_roundtrip(tmp_path: Path, monkeypatch):
             "start_station_id": "HB101",
             "start_lat": 40.7359,
             "start_lng": -74.0303,
+            "end_station_id": "JC115",
+            "end_lat": 40.7177,
+            "end_lng": -74.0438,
         },
     )
     assert response.status_code == 200
-    assert response.json()["predicted_duration_minutes"] > 0
+    assert 0 < response.json()["predicted_duration_minutes"] <= 180
 
 
 def test_api_rejects_impossible_coordinates():
@@ -49,7 +66,9 @@ def test_api_rejects_impossible_coordinates():
             "start_station_id": "A",
             "start_lat": 0,
             "start_lng": 0,
+            "end_station_id": "B",
+            "end_lat": 40.73,
+            "end_lng": -73.98,
         },
     )
     assert response.status_code == 422
-

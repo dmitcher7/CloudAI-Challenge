@@ -4,36 +4,105 @@
     "rideable_type",
     "member_casual",
     "start_station_id",
+    "end_station_id",
     "start_lat",
     "start_lng",
+    "end_lat",
+    "end_lng",
+    "direct_distance_km",
+    "grid_distance_km",
+    "delta_lat",
+    "delta_lng",
+    "bearing_sin",
+    "bearing_cos",
+    "route_typical_minutes",
+    "route_history_log_count",
+    "start_typical_minutes",
+    "end_typical_minutes",
     "start_hour_sin",
     "start_hour_cos",
     "weekday_sin",
     "weekday_cos",
     "month_sin",
     "month_cos",
-    "is_weekend"
+    "is_weekend",
+    "is_holiday",
+    "temperature_2m",
+    "relative_humidity_2m",
+    "precipitation",
+    "wind_speed_10m"
   ],
   "target": "duration_minutes",
-  "trained_at_utc": "2026-10-02T12:49:36.299539+00:00",
+  "trained_at_utc": "2026-10-09T11:39:22.396076+00:00",
   "training_period": [
     "2023-12-31 21:40:09.191000",
-    "2024-03-16 12:20:50.195000"
+    "2024-10-14 17:48:22.322000"
   ],
   "holdout_period": [
-    "2024-03-16 12:20:53.125000",
-    "2024-03-31 23:57:16.025000"
+    "2024-10-14 17:48:33.348000",
+    "2024-12-31 23:57:46.390000"
   ],
   "metrics": {
     "model": "hist_gradient_boosting",
-    "mae_minutes": 6.691827484395623,
-    "rmse_minutes": 11.719170270920864,
-    "median_ae_minutes": 4.145105954666024,
-    "r2": 0.04864699873542078,
-    "train_rows": 400000,
-    "test_rows": 100000,
-    "test_start": "2024-03-16 12:20:53.125000",
-    "test_end": "2024-03-31 23:57:16.025000"
+    "mae_minutes": 3.1208213025875144,
+    "rmse_minutes": 7.357651988116046,
+    "median_ae_minutes": 1.5345513426199378,
+    "r2": 0.5181062139132548,
+    "train_rows": 800000,
+    "test_rows": 200000,
+    "test_start": "2024-10-14 17:48:33.348000",
+    "test_end": "2024-12-31 23:57:46.390000"
   },
-  "limitations": "No weather/events/availability; prediction is conditional on recorded trips."
+  "selection_rule": "highest validation R2 among models within 0.10 minutes of the best validation MAE",
+  "selection_metrics": {
+    "model": "hist_gradient_boosting",
+    "mae_minutes": 3.6590372951997,
+    "rmse_minutes": 8.384668521389077,
+    "median_ae_minutes": 1.7478491863881436,
+    "r2": 0.4975419075902846,
+    "train_rows": 640000,
+    "test_rows": 160000,
+    "test_start": "2024-09-02 17:14:34.725000",
+    "test_end": "2024-10-14 17:48:22.322000",
+    "selected": true
+  },
+  "training_metrics": {
+    "mae_minutes": 3.774675564431088,
+    "rmse_minutes": 9.171111597033438,
+    "median_ae_minutes": 1.6686383062547545,
+    "r2": 0.4651246891858425
+  },
+  "monthly_holdout_metrics": [
+    {
+      "month": "2024-10",
+      "rows": 64000,
+      "mae_minutes": 3.366530776742921,
+      "rmse_minutes": 8.154537163553785,
+      "median_ae_minutes": 1.580343628025809,
+      "r2": 0.4884630879478311
+    },
+    {
+      "month": "2024-11",
+      "rows": 83774,
+      "mae_minutes": 3.20392320055638,
+      "rmse_minutes": 7.360185819906852,
+      "median_ae_minutes": 1.613322398626444,
+      "r2": 0.5205209227610275
+    },
+    {
+      "month": "2024-12",
+      "rows": 52226,
+      "mae_minutes": 2.6864172749692803,
+      "rmse_minutes": 6.239149584905156,
+      "median_ae_minutes": 1.3756124434209709,
+      "r2": 0.5541666799341234
+    }
+  ],
+  "route_history_summary": {
+    "routes": 323639,
+    "start_stations": 2298,
+    "end_stations": 2320,
+    "smoothing": 20.0
+  },
+  "limitations": "Destination is treated as planned input; weather is hourly and city-level. Events, traffic, route choice and bike availability are unavailable."
 }

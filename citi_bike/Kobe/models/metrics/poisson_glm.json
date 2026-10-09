@@ -1,0 +1,29 @@
+{
+  "notebook": "05c_poisson_glm",
+  "model": "Poisson-GLM (zone x uur x weekend, spline temperatuur)",
+  "params": {
+    "alpha": 1e-06
+  },
+  "rain_factor_1mm": 0.703,
+  "holiday_factor": 0.828,
+  "cv_mae": [
+    29.5523,
+    31.8196,
+    27.6613,
+    31.287,
+    31.9487
+  ],
+  "cv_mae_mean": 30.4538,
+  "cv_poisson_deviance": [
+    10.4516,
+    12.9804,
+    9.4367,
+    12.098,
+    11.3241
+  ],
+  "cv_fit_seconds": 11.2,
+  "test_mae": 33.1892,
+  "test_rmse": 60.3971,
+  "test_r2": 0.8916,
+  "test_poisson_deviance": 14.5894
+}

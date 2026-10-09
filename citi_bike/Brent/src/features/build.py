@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from pandas.tseries.holiday import USFederalHolidayCalendar
 
 from src.config import MODEL_FEATURES
+from src.data.weather import WEATHER_FEATURES
+from src.features.history import HISTORY_FEATURES
 
 
 def make_features(frame: pd.DataFrame) -> pd.DataFrame:
@@ -23,10 +26,45 @@ def make_features(frame: pd.DataFrame) -> pd.DataFrame:
     result["month_sin"] = np.sin(2 * np.pi * month / 12)
     result["month_cos"] = np.cos(2 * np.pi * month / 12)
     result["is_weekend"] = (weekday >= 5).astype("int8")
+    holidays = (
+        USFederalHolidayCalendar().holidays(start=started.min(), end=started.max())
+        if started.notna().any()
+        else pd.DatetimeIndex([])
+    )
+    result["is_holiday"] = started.dt.normalize().isin(holidays).astype("int8")
 
-    for column in ["rideable_type", "member_casual", "start_station_id"]:
+    lat1 = np.radians(pd.to_numeric(result["start_lat"], errors="coerce"))
+    lng1 = np.radians(pd.to_numeric(result["start_lng"], errors="coerce"))
+    lat2 = np.radians(pd.to_numeric(result["end_lat"], errors="coerce"))
+    lng2 = np.radians(pd.to_numeric(result["end_lng"], errors="coerce"))
+    delta_lat_radians = lat2 - lat1
+    delta_lng_radians = lng2 - lng1
+    haversine = np.sin(delta_lat_radians / 2) ** 2 + (
+        np.cos(lat1) * np.cos(lat2) * np.sin(delta_lng_radians / 2) ** 2
+    )
+    result["direct_distance_km"] = 6371.0088 * 2 * np.arcsin(np.sqrt(haversine.clip(0, 1)))
+    result["delta_lat"] = pd.to_numeric(result["end_lat"], errors="coerce") - pd.to_numeric(
+        result["start_lat"], errors="coerce"
+    )
+    result["delta_lng"] = pd.to_numeric(result["end_lng"], errors="coerce") - pd.to_numeric(
+        result["start_lng"], errors="coerce"
+    )
+    north_km = result["delta_lat"] * 111.0
+    east_km = result["delta_lng"] * 84.0
+    grid_angle = np.radians(29.0)
+    grid_x = east_km * np.cos(grid_angle) + north_km * np.sin(grid_angle)
+    grid_y = -east_km * np.sin(grid_angle) + north_km * np.cos(grid_angle)
+    result["grid_distance_km"] = grid_x.abs() + grid_y.abs()
+    bearing = np.arctan2(east_km, north_km)
+    result["bearing_sin"] = np.sin(bearing)
+    result["bearing_cos"] = np.cos(bearing)
+
+    for column in ["rideable_type", "member_casual", "start_station_id", "end_station_id"]:
         result[column] = result[column].astype("string").fillna("unknown")
-    for column in ["start_lat", "start_lng"]:
+    for column in [
+        "start_lat", "start_lng", "end_lat", "end_lng", *WEATHER_FEATURES, *HISTORY_FEATURES
+    ]:
+        if column not in result:
+            result[column] = np.nan
         result[column] = pd.to_numeric(result[column], errors="coerce")
     return result[MODEL_FEATURES]
-

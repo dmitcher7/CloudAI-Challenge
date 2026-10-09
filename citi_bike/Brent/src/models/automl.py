@@ -12,8 +12,10 @@ from pathlib import Path
 import pandas as pd
 from sklearn.metrics import mean_absolute_error
 
-from src.config import PROCESSED_DIR, TARGET
+from src.config import PROCESSED_DIR, TARGET, WEATHER_PATH
+from src.data.weather import attach_hourly_weather
 from src.features.build import make_features
+from src.features.history import apply_history, fit_transform_history
 from src.models.train import temporal_split
 
 
@@ -24,10 +26,13 @@ def run_automl(data_path: Path, seconds: int = 300) -> dict:
         raise RuntimeError("Install the project requirements to enable FLAML AutoML") from exc
 
     frame = pd.read_parquet(data_path).sort_values("started_at")
+    frame = attach_hourly_weather(frame, WEATHER_PATH)
     train, test = temporal_split(frame)
+    train, route_history = fit_transform_history(train, TARGET)
+    test = apply_history(test, route_history)
     x_train, x_test = make_features(train), make_features(test)
     # FLAML handles category dtype efficiently and avoids an enormous station one-hot matrix.
-    for column in ["rideable_type", "member_casual", "start_station_id"]:
+    for column in ["rideable_type", "member_casual", "start_station_id", "end_station_id"]:
         x_train[column] = x_train[column].astype("category")
         x_test[column] = x_test[column].astype("category")
 

@@ -28,15 +28,22 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 # alleen voor notebook 07:
 # python -m pip install -r requirements-aws.txt
-python -m src.data.download --start 2024-01 --end 2024-03
+python -m src.data.download
+python -m src.data.weather
 python -m src.data.prepare
 python -m src.models.train --data data/processed/trips.parquet
 uvicorn app.main:app --reload
 ```
 
-Open daarna <http://127.0.0.1:8000>. De gekozen standaardperiode is klein genoeg voor een laptop; voor seizoenseffecten hoort de eindanalyse minimaal twaalf maanden te gebruiken, bijvoorbeeld `--start 2024-01 --end 2024-12`. Alle maanden en steekproefgroottes moeten in de presentatie worden genoemd.
+De ritdownload gebruikt standaard het volledige kalenderjaar 2024 (`2024-01` t/m `2024-12`) en kan daardoor meerdere GB groot zijn. `src.data.weather` downloadt voor dezelfde periode een compacte uur-weertabel voor New York. De training neemt standaard maximaal 1.000.000 deterministisch en gelijkmatig over het hele jaar verdeelde ritten, zodat alle seizoenen vertegenwoordigd blijven zonder onnodig geheugengebruik. Gebruik `--max-rows 0` alleen wanneer de machine alle rijen aankan. Open na training <http://127.0.0.1:8000>. Vermeld de gebruikte maanden en steekproefgrootte altijd in de presentatie.
 
 ## Notebookvolgorde
+
+Open in VS Code de map `Brent` als workspace en selecteer rechtsboven in een notebook de kernel
+`venv\Scripts\python.exe` (`Python (venv)`). Iedere notebook begint met een bootstrapcel die de
+projectroot automatisch aan het Python-pad toevoegt. Daardoor werken imports uit `src` ook wanneer
+VS Code de notebookkernel vanuit `notebooks/` start. Notebook 01 laat `RUN_DOWNLOAD=False` staan als
+de jaarbestanden al aanwezig zijn; notebook 07 vereist daarnaast een geconfigureerd AWS-account.
 
 1. `notebooks/01_download_and_audit.ipynb` — geautomatiseerde download en schema-audit.
 2. `notebooks/02_eda_and_cleaning.ipynb` — cleaning, grafieken en inhoudelijke EDA.
@@ -45,6 +52,7 @@ Open daarna <http://127.0.0.1:8000>. De gekozen standaardperiode is klein genoeg
 5. `notebooks/05_automl_and_models.ipynb` — baseline, AutoML en handmatig gekozen modellen.
 6. `notebooks/06_model_comparison.ipynb` — vergelijking, foutanalyse en definitieve keuze.
 7. `notebooks/07_aws_sagemaker.ipynb` — reproduceerbare SageMaker-training (vereist eigen AWS-account; installeer daarvoor ook `requirements-aws.txt`).
+8. `notebooks/08_model_dashboard.ipynb` — grafisch eindrapport met alle features, technieken, resultaten, importance en foutanalyse.
 
 De notebooks zijn dunne, uitlegbare onderzoekslagen boven herbruikbare code in `src/`. Genereer ze opnieuw met `python scripts/build_notebooks.py`.
 
@@ -63,29 +71,33 @@ tests/               unit- en integratietests
 
 ## Reproduceerbaarheid en data
 
-De data worden nooit handmatig toegevoegd. `src.data.download` bouwt de officiële maand-URL's op, controleert ZIP-bestanden en schrijft een manifest met URL, tijdstip, bestandsgrootte en SHA-256. `src.data.prepare` harmoniseert historische kolomnamen, verwijdert technisch ongeldige records, begrenst alleen onrealistische ritduur en bewaart de opgeschoonde data als Parquet.
+De data worden nooit handmatig toegevoegd. `src.data.download` bouwt de officiële maand-URL's op, controleert ZIP-bestanden en schrijft een manifest met URL, tijdstip, bestandsgrootte en SHA-256. `src.data.weather` haalt historische uurwaarden op voor temperatuur, luchtvochtigheid, neerslag en wind. `src.data.prepare` harmoniseert historische kolomnamen, verwijdert technisch ongeldige records, begrenst alleen onrealistische ritduur en bewaart de opgeschoonde data als Parquet.
 
 Bron: [Citi Bike System Data](https://citibikenyc.com/system-data). De link in de opdracht bevat per ongeluk tweemaal de URL; dit is de correcte officiële pagina. Gebruik van de trip histories valt onder de [Citi Bike Data Use Policy](https://citibikenyc.com/data-sharing-policy).
+
+Historisch en verwacht weer komt van [Open-Meteo](https://open-meteo.com/). De training koppelt weer per lokaal vertrekuur; de API probeert voor nieuwe ritten een forecast op te halen en valt bij onbeschikbaarheid terug op de trainingsmediaan.
 
 ## Modellen en eerlijke evaluatie
 
 - naïeve mediaanbaseline;
 - Ridge op one-hot/cyclische features;
-- histogram gradient boosting;
+- histogram gradient boosting met log-, raw- en absolute-error-targetvarianten;
 - Extra Trees;
+- CatBoost met native categorische features;
 - FLAML als reproduceerbare AutoML-vergelijking (meegeleverd in `requirements.txt`);
 - SageMaker-training met dezelfde train/testgrens.
 
-De laatste 20% in de tijd is de hold-outset. Hyperparameters worden alleen op het eerdere train-gedeelte gekozen. Metrics staan na uitvoering in `reports/metrics.csv`; de uiteindelijke pipeline in `models/duration_model.joblib`. De API weigert te starten zonder getraind artifact, behalve met `ALLOW_FALLBACK_MODEL=true` voor een expliciete demo.
+De steekproef wordt chronologisch gesplitst: de eerste 80% is ontwikkeldata en de laatste 20% is de finale hold-out. Binnen de ontwikkeldata vormt opnieuw de laatste 20% de selectievalidatie. Kandidaten worden dus nooit op de finale hold-out gekozen. Om zowel nauwkeurigheid als verklaarde variantie te verbeteren, wint binnen 0,10 minuut van de beste validatie-MAE het model met de hoogste validatie-R². Route- en stationshistoriek gebruikt uitsluitend eerder waargenomen ritten. Selectiemetrics staan in `reports/metrics.csv`, de eenmalige eindscore in `reports/final_holdout_metrics.csv` en de stabiliteit per maand in `reports/metrics_by_month.csv`. De uiteindelijke pipeline staat in `models/duration_model.joblib`; zonder dit artifact weigert de API te starten.
 
-### Uitgevoerde Q1-2024-run
+### Uitgevoerde volledige-jaar-run
 
-De lokale reproduceerbare run op januari–maart 2024 leverde 6.658.731 geldige ritten op. Casual
-ritten hadden een mediaan van 11,54 minuten tegenover 7,70 voor members: verschil 3,85 minuten,
-95%-bootstrap-BI [3,57; 4,12], Cliff’s δ = 0,297. Op een tijdshold-out (100.000 ritten) haalde
-histogram gradient boosting MAE 6,69 minuten, tegenover 7,04 voor de mediaanbaseline; RMSE was
-11,72 minuten en R² 0,049. Dit is een eerste Q1-run, geen claim dat het model alle seizoenen
-generaliseert. De exacte waarden staan in `reports/` en worden door de notebooks opnieuw berekend.
+De lokale reproduceerbare run op januari–december 2024 leverde 44.199.909 geldige ritten op. Voor
+modelvergelijking werden 1.000.000 ritten gelijkmatig over het jaar geselecteerd: 640.000 voor
+selectietraining, 160.000 voor selectievalidatie en de laatste 200.000 als aparte finale tijdshold-out.
+Met geplande bestemming, geometrie, uurweer en lekvrije routehistoriek behaalde histogram gradient
+boosting op `log1p`-ritduur daar een MAE van 3,12 minuten, RMSE van 7,36 minuten en R² van 0,518.
+De maandelijkse hold-out-R² loopt van 0,488 in oktober tot 0,554 in december. De exacte waarden staan
+in `reports/`; notebooks 04, 06 en 08 berekenen aanvullend hypothese-, subgroep- en dashboardresultaten.
 
 ## Deployment
 
@@ -99,7 +111,9 @@ docker run --rm -p 8000:8000 citibike-duration
 ## Belangrijkste beperkingen
 
 - Trip histories bevatten ritten, geen niet-gerealiseerde vraag: causaliteit of volledige vraagvoorspelling is niet mogelijk.
-- Weer, evenementen, beschikbaarheid en fietspadcondities ontbreken.
+- Evenementen, verkeer, beschikbaarheid en fietspadcondities ontbreken.
+- Weer is een uurwaarde voor de omgeving New York en vangt geen lokale straatverschillen.
+- De historische eindlocatie fungeert als proxy voor een vooraf geplande bestemming; afwijkingen van de werkelijk bedoelde route blijven onbekend.
 - Stations en gebruikersgedrag veranderen in de tijd; driftmonitoring en periodiek hertrainen zijn nodig.
 - Afgekapt ongeldige/extreme ritten worden gedocumenteerd en niet stilzwijgend als normale ritten behandeld.
 - De AWS-notebook is uitvoerbaar, maar cloudtraining en hosting vereisen eigen credentials, budget en expliciete uitvoering.
