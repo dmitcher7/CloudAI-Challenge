@@ -4,10 +4,11 @@ Wordt aangeroepen door 05a (eerste snelle model) en 05e (getunede hyperparameter
 komt op de VM via een merge naar main (.github/workflows/deploy-api.yml).
 
 Werkwijze (dezelfde als in de notebooks):
-1. data/model_table.parquet (zone x uur, gemaakt door 04_prepare_data) en data/zones.json inlezen;
-2. trainen op de train-uren, meten op de test-uren (laatste 7 dagen van elke maand);
-3. kwaliteitscontrole: MAE mag niet meer dan --tolerance slechter zijn dan het model dat er nu staat;
-4. het definitieve model opnieuw fitten op alle uren van het jaar en als bundle wegschrijven.
+1. data/model_table.parquet (zone x uur over alle jaren, gemaakt door 04_prepare_data) en data/zones.json inlezen;
+2. trainen op alles vóór de testperiode, meten op de testperiode (de laatste 12 maanden);
+3. kwaliteitscontrole: MAE mag niet meer dan --tolerance slechter zijn dan het model dat er nu staat
+   (alleen als dat model op dezelfde testperiode gemeten werd, anders zijn de cijfers niet vergelijkbaar);
+4. het definitieve model opnieuw fitten op alle uren (ook de laatste 12 maanden) en als bundle wegschrijven.
 
 Gebruik:  python citi_bike/Kobe/train.py [--out pad/model.pkl] [--tolerance 0.02] [--force]
 """
@@ -20,7 +21,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import joblib
-import pandas as pd
 from sklearn.ensemble import HistGradientBoostingRegressor
 
 HERE = Path(__file__).resolve().parent
@@ -29,10 +29,6 @@ import citibike as cb  # noqa: E402
 
 DEFAULT_OUT = HERE.parent.parent / "deploy" / "citi_bike_demand" / "model.pkl"
 PARAMS_PATH = HERE / "models" / "best_params.json"
-
-LIMITATIONS = ("Geschat gemiddelde, geen garantie. Het model kent geen evenementen, wegenwerken, "
-               "stationsstoringen of het aantal beschikbare fietsen; de vraag is gemeten als gerealiseerde "
-               "vertrekken (een leeg station telt als 0 vraag). Getraind op 2024.")
 
 
 def build_model(params: dict) -> HistGradientBoostingRegressor:
@@ -53,25 +49,32 @@ def main() -> int:
     params = json.loads(PARAMS_PATH.read_text(encoding="utf-8"))["params"]
 
     X, y = cb.make_features(table), table[cb.TARGET]
-    is_test = cb.split_labels(table["time"]) == "test"
-    print(f"Data: {len(table):,} zone-uren ({(~is_test).sum():,} train / {is_test.sum():,} test), {len(zones)} zones")
+    is_test = (table["split"] == "test").to_numpy()
+    test_period = f"{table.loc[is_test, 'time'].min():%Y-%m-%d} t/m {table.loc[is_test, 'time'].max():%Y-%m-%d}"
+    print(f"Data: {len(table):,} zone-uren ({(~is_test).sum():,} train / {is_test.sum():,} test: {test_period}), "
+          f"{len(zones)} zones")
 
-    # 1. Eerlijke meting: trainen zonder de testweken.
+    # 1. Eerlijke meting: trainen op het verleden, meten op de laatste 12 maanden.
     model = build_model(params).fit(X[~is_test], y[~is_test])
     metrics = cb.evaluate(y[is_test], model.predict(X[is_test]))
     print("Hold-out:", metrics)
 
-    # 2. Kwaliteitscontrole tegenover het model dat er nu staat.
+    # 2. Kwaliteitscontrole tegenover het model dat er nu staat (als de meting vergelijkbaar is).
     if args.out.exists() and not args.force:
-        current = joblib.load(args.out)["metrics"]["mae"]
-        limit = current * (1 + args.tolerance)
-        print(f"Huidig model: MAE {current:.4f}; nieuw: {metrics['mae']:.4f} (grens {limit:.4f})")
-        if metrics["mae"] > limit:
-            print("::error::Nieuw model is slechter dan het huidige; niet weggeschreven.")
-            return 1
+        current = joblib.load(args.out)
+        if current.get("test_period") == test_period:
+            limit = current["metrics"]["mae"] * (1 + args.tolerance)
+            print(f"Huidig model: MAE {current['metrics']['mae']:.4f}; nieuw: {metrics['mae']:.4f} (grens {limit:.4f})")
+            if metrics["mae"] > limit:
+                print("::error::Nieuw model is slechter dan het huidige; niet weggeschreven.")
+                return 1
+        else:
+            print(f"Huidig model werd op een andere testperiode gemeten ({current.get('test_period', 'onbekend')}); "
+                  "geen vergelijking mogelijk.")
 
-    # 3. Definitief model op alle uren van het jaar (meer data, zelfde hyperparameters).
+    # 3. Definitief model op alle uren (meer en recentere data, zelfde hyperparameters).
     final = build_model(params).fit(X, y)
+    first, last = table["time"].min(), table["time"].max()
     bundle = {
         "model": final,
         "model_name": "HistGradientBoosting (Poisson)",
@@ -79,16 +82,21 @@ def main() -> int:
         "features": cb.FEATURES,
         "params": params,
         "metrics": metrics,
-        "metrics_note": "gemeten op de laatste 7 dagen van elke maand met een model zonder die dagen; "
+        "test_period": test_period,
+        "metrics_note": f"gemeten op {test_period} met een model getraind op alle uren daarvoor; "
                         "het gedeployde model is daarna op alle uren hertraind",
+        "trained_on": f"{first:%Y-%m-%d} t/m {last:%Y-%m-%d}",
         "zones": zones,
         "trained_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "limitations": LIMITATIONS,
+        "limitations": ("Geschat gemiddelde, geen garantie. Het model kent geen evenementen, wegenwerken, "
+                        "stationsstoringen of het aantal beschikbare fietsen; de vraag is gemeten als gerealiseerde "
+                        f"vertrekken (een leeg station telt als 0 vraag). Getraind op {first:%Y}-{last:%Y}; voor "
+                        "nieuwe voorspellingen gebruikt het het huidige aantal actieve stations per zone."),
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(bundle, args.out, compress=3)
     cb.save_results("deployed", {"model": bundle["model_name"], "params": params, **metrics,
-                                 "trained_at_utc": bundle["trained_at_utc"]})
+                                 "test_period": test_period, "trained_at_utc": bundle["trained_at_utc"]})
     print(f"Bundle geschreven naar {args.out} ({args.out.stat().st_size / 1e6:.1f} MB)")
     return 0
 

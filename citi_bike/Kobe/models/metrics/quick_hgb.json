@@ -1,25 +1,21 @@
 {
-  "notebook": "05a_baseline",
-  "model": "HistGradientBoosting (Poisson, standaard)",
+  "notebook": "07_baseline_all_data",
+  "model": "HistGradientBoosting (Poisson, standaard), alle data",
   "params": {},
   "cv_mae": [
-    27.832,
-    28.3605,
-    25.592,
-    28.0424,
-    28.0047
+    31.079,
+    41.2178,
+    36.8022
   ],
-  "cv_mae_mean": 27.5663,
+  "cv_mae_mean": 36.3663,
   "cv_poisson_deviance": [
-    9.4235,
-    10.664,
-    8.012,
-    10.2752,
-    8.7667
+    16.1774,
+    19.9398,
+    15.0373
   ],
-  "cv_fit_seconds": 5.3,
-  "test_mae": 30.8826,
-  "test_rmse": 57.1495,
-  "test_r2": 0.9029,
-  "test_poisson_deviance": 13.3123
+  "cv_fit_seconds": 19.6,
+  "test_mae": 36.0537,
+  "test_rmse": 63.8321,
+  "test_r2": 0.9022,
+  "test_poisson_deviance": 14.9121
 }

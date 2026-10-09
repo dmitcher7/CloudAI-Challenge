@@ -1,0 +1,42 @@
+[
+  {
+    "trainingsdata":"laatste 1 jaar",
+    "zone-uren":262800,
+    "mae":30.3095,
+    "rmse":55.9832,
+    "r2":0.9248,
+    "poisson_deviance":12.5231
+  },
+  {
+    "trainingsdata":"laatste 2 jaar",
+    "zone-uren":526320,
+    "mae":29.7777,
+    "rmse":54.7821,
+    "r2":0.928,
+    "poisson_deviance":11.9484
+  },
+  {
+    "trainingsdata":"laatste 3 jaar",
+    "zone-uren":781824,
+    "mae":29.3374,
+    "rmse":53.9275,
+    "r2":0.9302,
+    "poisson_deviance":11.5618
+  },
+  {
+    "trainingsdata":"laatste 5 jaar",
+    "zone-uren":1278408,
+    "mae":29.0976,
+    "rmse":53.7071,
+    "r2":0.9308,
+    "poisson_deviance":11.1198
+  },
+  {
+    "trainingsdata":"alles (sinds 2013)",
+    "zone-uren":2556912,
+    "mae":28.9411,
+    "rmse":53.6342,
+    "r2":0.9309,
+    "poisson_deviance":10.6251
+  }
+]

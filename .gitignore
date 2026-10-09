@@ -22,6 +22,9 @@ __pycache__/
 !deploy/*/*.pkl
 # ...en de kleine, voorbereide Citi Bike-modeltabel (2,3 MB): modellen hertrainen zonder 8,7 GB te downloaden
 !citi_bike/Kobe/data/model_table.parquet
+!citi_bike/Kobe/data/2024/model_table.parquet
+# Tussenresultaten per bronbestand van 01_download (worden opnieuw gemaakt)
+citi_bike/Kobe/data/_*/
 *.h5
 
 # Omgevingsvariabelen en geheime API keys

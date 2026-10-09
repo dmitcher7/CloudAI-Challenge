@@ -43,10 +43,18 @@ def make_features(frame: pd.DataFrame) -> pd.DataFrame:
     out["temperature_c"] = frame["temperature_c"].astype(float)
     out["precipitation_mm"] = frame["precipitation_mm"].astype(float)
     out["wind_kmh"] = frame["wind_kmh"].astype(float)
+    out["year"] = time.dt.year
+    if "active_stations" in frame:
+        out["active_stations"] = frame["active_stations"].astype(int)
+    if "snow_depth_cm" in frame:
+        out["snow_depth_cm"] = frame["snow_depth_cm"].astype(float)
     return out[FEATURES]
 
 
 def predict_frame(frame: pd.DataFrame) -> np.ndarray:
+    # Voorspellingen gaan over nu of de toekomst: we gebruiken het huidige aantal actieve stations per zone.
+    if "active_stations" in FEATURES:
+        frame = frame.assign(active_stations=frame["zone"].map(lambda z: ZONES[int(z)]["active_stations"]))
     return np.maximum(0, model.predict(make_features(frame)))
 
 
@@ -54,6 +62,8 @@ class Weather(BaseModel):
     temperature_c: float = Field(ge=-30, le=45, examples=[18.0])
     precipitation_mm: float = Field(ge=0, le=100, examples=[0.0])
     wind_kmh: float = Field(ge=0, le=150, examples=[12.0])
+    snow_depth_cm: float = Field(default=0, ge=0, le=300, examples=[0.0],
+                                 description="Sneeuw op de grond (cm); 0 als er geen sneeuw ligt")
 
 
 class HourRequest(Weather):

@@ -56,7 +56,7 @@
         <h1>Hoeveel fietsen <em>vertrekken</em> er?</h1>
         <p class="lead">Verwacht aantal vertrekken per uur in een zone van New York, op basis van tijdstip, feestdagen en het weer. Handig om fietsen op tijd te herverdelen: een leeg station in de spits is een gemiste groene rit.</p>
         <div id="map" role="application" aria-label="Kaart met zones"></div>
-        <p class="hint">Klik op een cirkel om een zone te kiezen. Grotere cirkel = meer ritten in 2024.</p>
+        <p class="hint">Klik op een cirkel om een zone te kiezen. Grotere cirkel = meer ritten in de laatste 12 maanden.</p>
       </section>
 
       <section class="card" aria-labelledby="form-title">
@@ -91,7 +91,7 @@
       const API_URL = new URLSearchParams(location.search).get("api")
         || (location.protocol.startsWith("http") ? location.origin : "http://89.168.73.76:8000");
       const NYC = { lat: 40.73, lng: -73.97 };
-      const FALLBACK = { temperature_c: 15, precipitation_mm: 0, wind_kmh: 12 };   // als het weer niet op te halen is
+      const FALLBACK = { temperature_c: 15, precipitation_mm: 0, wind_kmh: 12, snow_depth_cm: 0 };   // als het weer niet op te halen is
       const $ = (id) => document.getElementById(id);
       $("docs").href = `${API_URL}/docs`;
 
@@ -126,7 +126,7 @@
           for (const zone of info.zones) {
             $("zone").add(new Option(`${zone.zone} · ${zone.name} (${zone.n_stations} stations)`, zone.zone));
             markers[zone.zone] = L.circleMarker([zone.lat, zone.lng], { radius: 6 + 18 * Math.sqrt(zone.trips / maxTrips) })
-              .bindTooltip(`Zone ${zone.zone}: ${zone.name}<br>${zone.trips.toLocaleString("nl-BE")} ritten in 2024`)
+              .bindTooltip(`Zone ${zone.zone}: ${zone.name}<br>${zone.trips.toLocaleString("nl-BE")} ritten in de laatste 12 maanden${zone.active_stations ? ` · ${zone.active_stations} actieve stations` : ""}`)
               .on("click", () => selectZone(zone.zone))
               .addTo(map);
           }
@@ -140,7 +140,7 @@
         const day = $("date").value;
         const daysAhead = (new Date(day) - new Date(today.toISOString().slice(0, 10))) / 864e5;
         const base = daysAhead < -60 ? "https://archive-api.open-meteo.com/v1/archive" : "https://api.open-meteo.com/v1/forecast";
-        const url = `${base}?latitude=${NYC.lat}&longitude=${NYC.lng}&hourly=temperature_2m,precipitation,wind_speed_10m`
+        const url = `${base}?latitude=${NYC.lat}&longitude=${NYC.lng}&hourly=temperature_2m,precipitation,wind_speed_10m,snow_depth`
           + `&timezone=America%2FNew_York&wind_speed_unit=kmh&start_date=${day}&end_date=${day}`;
         $("weather").textContent = "Weer wordt opgehaald…";
         try {
@@ -152,11 +152,14 @@
             temperature_c: h.temperature_2m[i] ?? FALLBACK.temperature_c,
             precipitation_mm: h.precipitation[i] ?? 0,
             wind_kmh: h.wind_speed_10m[i] ?? FALLBACK.wind_kmh,
+            snow_depth_cm: Math.round((h.snow_depth?.[i] ?? 0) * 1000) / 10,   // meter -> cm
           }));
           const temps = hourlyWeather.map((w) => w.temperature_c);
           const rain = hourlyWeather.reduce((s, w) => s + w.precipitation_mm, 0);
           $("weather").textContent = `Open-Meteo: ${Math.min(...temps).toFixed(0)}–${Math.max(...temps).toFixed(0)} °C, `
-            + `${rain.toFixed(1)} mm neerslag, wind tot ${Math.max(...hourlyWeather.map((w) => w.wind_kmh)).toFixed(0)} km/u.`;
+            + `${rain.toFixed(1)} mm neerslag, wind tot ${Math.max(...hourlyWeather.map((w) => w.wind_kmh)).toFixed(0)} km/u`
+            + (Math.max(...hourlyWeather.map((w) => w.snow_depth_cm)) > 0
+              ? `, ${Math.max(...hourlyWeather.map((w) => w.snow_depth_cm)).toFixed(0)} cm sneeuw op de grond.` : ".");
         } catch (error) {
           hourlyWeather = Array.from({ length: 24 }, () => ({ ...FALLBACK }));
           $("weather").textContent = `Geen weerdata (${error.message}); we gebruiken een droge dag van 15 °C.`;

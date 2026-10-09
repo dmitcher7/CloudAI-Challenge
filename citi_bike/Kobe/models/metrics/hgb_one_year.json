@@ -1,0 +1,15 @@
+{
+  "notebook": "08_hgb_all_data",
+  "model": "HistGradientBoosting, alleen het laatste jaar",
+  "params": {
+    "l2_regularization": 0.004809,
+    "learning_rate": 0.022801,
+    "max_iter": 887,
+    "max_leaf_nodes": 151,
+    "min_samples_leaf": 335
+  },
+  "test_mae": 30.3095,
+  "test_rmse": 55.9832,
+  "test_r2": 0.9248,
+  "test_poisson_deviance": 12.5231
+}

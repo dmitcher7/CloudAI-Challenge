@@ -1,15 +1,16 @@
 {
   "model": "HistGradientBoosting (Poisson)",
   "params": {
-    "l2_regularization": 0.015314,
-    "learning_rate": 0.03129,
-    "max_iter": 1056,
-    "max_leaf_nodes": 85,
-    "min_samples_leaf": 18
+    "l2_regularization": 0.004809,
+    "learning_rate": 0.022801,
+    "max_iter": 887,
+    "max_leaf_nodes": 151,
+    "min_samples_leaf": 335
   },
-  "mae": 29.0454,
-  "rmse": 56.3468,
-  "r2": 0.9056,
-  "poisson_deviance": 12.5921,
-  "trained_at_utc": "2026-10-09T12:05:31+00:00"
+  "mae": 28.9411,
+  "rmse": 53.6342,
+  "r2": 0.9309,
+  "poisson_deviance": 10.6251,
+  "test_period": "2025-10-01 t/m 2026-09-30",
+  "trained_at_utc": "2026-10-09T20:59:01+00:00"
 }
