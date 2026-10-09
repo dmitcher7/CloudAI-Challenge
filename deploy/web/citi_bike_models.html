@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="CloudAI Challenge: kies een model." />
-    <title>CloudAI · Modellen</title>
+    <meta name="description" content="Citi Bike NYC: kies tussen het ritduur- en het vraagmodel." />
+    <title>Citi Bike · Modellen</title>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;600;700&display=swap');
       :root { --ink:#17201b; --paper:#f2f0e8; --acid:#c8ff54; --line:#c9cdc7; --muted:#647068; }
@@ -51,54 +51,48 @@
   <body>
     <main>
       <section class="intro">
-        <p class="eyebrow">CLOUDAI CHALLENGE · GIT PUSH &amp; PRAY</p>
-        <h1>Twee datasets, <em>één API.</em></h1>
-        <p class="lead">Drie modellen voor twee datasets draaien samen in één FastAPI-app op een Oracle VM. De modellen worden lokaal getraind; een merge naar main die iets in <code>deploy/</code> wijzigt, zet ze automatisch op de server. Kies een model om het uit te proberen.</p>
+        <p class="eyebrow">NYC · CITI BIKE · 2 MODELLEN</p>
+        <h1>Welke vraag <em>stel je?</em></h1>
+        <p class="lead">Twee modellen op de open Citi Bike-data van New York, elk met een eigen vraag: hoe lang duurt één rit, en hoeveel fietsen vertrekken er per uur in een buurt? Kies een model om het uit te proberen.</p>
         <div class="facts">
-          <div><span>01</span><p>FastAPI op Oracle Cloud</p></div>
-          <div><span>02</span><p>Deploy via GitHub Actions</p></div>
-          <div><span>03</span><p>Rollback + dagelijkse test</p></div>
+          <div><span>01</span><p>Open Citi Bike-data</p></div>
+          <div><span>02</span><p>Alleen info van vóór vertrek</p></div>
+          <div><span>03</span><p>Zelfde API als de mushrooms</p></div>
         </div>
       </section>
 
-      <section class="models" aria-label="Modellen">
-        <a class="card" href="mushrooms.html">
-          <div class="card-head"><p>Classificatie</p><span id="mushrooms-status" class="status">controleren…</span></div>
-          <h2>🍄 Mushrooms</h2>
-          <p class="text">Eetbaar of giftig? Voorspelling op basis van hoed, steel en vindplaats.</p>
+      <section class="models" aria-label="Citi Bike-modellen">
+        <a class="card" href="citi_bike.html">
+          <div class="card-head"><p>Per rit</p><span id="citi_bike-status" class="status">controleren…</span></div>
+          <h2>⏱️ Ritduur</h2>
+          <p class="text">Hoe lang ben je onderweg? Schatting van de ritduur op basis van vertrekmoment, station, type fiets en rijder.</p>
           <div class="go">Probeer het model <span>→</span></div>
         </a>
-        <a class="card" href="citi_bike_models.html">
-          <div class="card-head"><p>Regressie · 2 modellen</p><span id="citi_bike-status" class="status">controleren…</span></div>
-          <h2>🚲 Citi Bike</h2>
-          <p class="text">Hoe lang duurt een rit, en hoeveel fietsen vertrekken er per uur in een zone? Twee modellen op de Citi Bike-data van New York.</p>
-          <div class="go">Kies een model <span>→</span></div>
+        <a class="card" href="citi_bike_demand.html">
+          <div class="card-head"><p>Per zone &amp; uur</p><span id="citi_bike_demand-status" class="status">controleren…</span></div>
+          <h2>📍 Vraag per zone</h2>
+          <p class="text">Hoeveel fietsen vertrekken er per uur in een zone? Voorspelling op basis van tijdstip, feestdagen en het weer.</p>
+          <div class="go">Probeer het model <span>→</span></div>
         </a>
       </section>
     </main>
-    <footer><span>CLOUDAI / 2026</span><a id="docs" href="/docs">API-documentatie ↗</a></footer>
+    <footer><a href="index.html">← Alle modellen</a><a id="docs" href="/docs">API-documentatie ↗</a></footer>
     <script>
       // Geserveerd door de API zelf -> zelfde adres. Lokaal geopend -> Oracle VM.
       const API_URL = new URLSearchParams(location.search).get("api")
         || (location.protocol.startsWith("http") ? location.origin : "http://89.168.73.76:8000");
       document.getElementById("docs").href = `${API_URL}/docs`;
 
-      const status = (id, text, ok) => {
-        const element = document.getElementById(id);
-        element.textContent = text;
-        element.classList.toggle("ok", ok);
-      };
-      const info = (name) => fetch(`${API_URL}/${name}/`).then((response) => response.json());
-
-      info("mushrooms")
-        .then((data) => status("mushrooms-status", `${data.model} · online`, true))
-        .catch(() => status("mushrooms-status", "offline", false));
-
-      // Eén kaart voor beide Citi Bike-modellen: tel hoeveel er online zijn.
-      Promise.allSettled([info("citi_bike"), info("citi_bike_demand")]).then((results) => {
-        const online = results.filter((r) => r.status === "fulfilled" && r.value.model).length;
-        status("citi_bike-status", `${online}/2 online`, online === 2);
-      });
+      for (const name of ["citi_bike", "citi_bike_demand"]) {
+        const element = document.getElementById(`${name}-status`);
+        fetch(`${API_URL}/${name}/`)
+          .then((response) => response.json())
+          .then((info) => {
+            element.textContent = `${info.model} · online`;
+            element.classList.add("ok");
+          })
+          .catch(() => { element.textContent = "offline"; });
+      }
     </script>
   </body>
 </html>

@@ -1,14 +1,12 @@
-"""Hertrain het Citi Bike-vraagmodel en schrijf de bundle voor de API (deploy/citi_bike_demand/model.pkl).
+"""Train het Citi Bike-vraagmodel lokaal en schrijf de bundle voor de API (deploy/citi_bike_demand/model.pkl).
 
-Dit script is de "ML-afdeling" in de automatische pipeline (.github/workflows/citi_bike_demand_retrain.yml):
-bij elke push die de data, de feature-code of de gekozen hyperparameters wijzigt, wordt het model
-opnieuw getraind, getest en - als het niet slechter is dan het huidige model - als pull request
-klaargezet. De merge van die PR deployt het nieuwe model naar de VM (deploy-api.yml).
+Wordt aangeroepen door 05a (eerste snelle model) en 05e (getunede hyperparameters). Het nieuwe model.pkl
+komt op de VM via een merge naar main (.github/workflows/deploy-api.yml).
 
 Werkwijze (dezelfde als in de notebooks):
 1. data/model_table.parquet (zone x uur, gemaakt door 04_prepare_data) en data/zones.json inlezen;
 2. trainen op de train-uren, meten op de test-uren (laatste 7 dagen van elke maand);
-3. kwaliteitspoort: MAE mag niet meer dan --tolerance slechter zijn dan het model dat nu gedeployed is;
+3. kwaliteitscontrole: MAE mag niet meer dan --tolerance slechter zijn dan het model dat er nu staat;
 4. het definitieve model opnieuw fitten op alle uren van het jaar en als bundle wegschrijven.
 
 Gebruik:  python citi_bike/Kobe/train.py [--out pad/model.pkl] [--tolerance 0.02] [--force]
@@ -47,7 +45,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--tolerance", type=float, default=0.02, help="toegelaten relatieve verslechtering van de MAE")
-    parser.add_argument("--force", action="store_true", help="kwaliteitspoort negeren")
+    parser.add_argument("--force", action="store_true", help="kwaliteitscontrole negeren")
     args = parser.parse_args()
 
     table = cb.load_model_table()
@@ -63,7 +61,7 @@ def main() -> int:
     metrics = cb.evaluate(y[is_test], model.predict(X[is_test]))
     print("Hold-out:", metrics)
 
-    # 2. Kwaliteitspoort tegenover het model dat nu in productie staat.
+    # 2. Kwaliteitscontrole tegenover het model dat er nu staat.
     if args.out.exists() and not args.force:
         current = joblib.load(args.out)["metrics"]["mae"]
         limit = current * (1 + args.tolerance)

@@ -2,6 +2,7 @@
 
     /                     keuzepagina (web/index.html)
     /mushrooms.html       webpagina mushroom-model
+    /citi_bike_models.html  keuzepagina tussen de twee Citi Bike-modellen
     /citi_bike.html       webpagina Citi Bike-model
     /citi_bike_demand.html  webpagina Citi Bike-vraagmodel
     /mushrooms/           model-info      POST /mushrooms/predict
