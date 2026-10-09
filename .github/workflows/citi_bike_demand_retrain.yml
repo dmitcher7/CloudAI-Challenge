@@ -1,0 +1,83 @@
+name: Citi Bike-vraagmodel hertrainen
+
+# De "ML-afdeling": bij elke push die de data, de feature-code of de hyperparameters van het
+# vraagmodel wijzigt, wordt het model opnieuw getraind en getest. Is het niet slechter dan het model
+# in productie, dan zet deze workflow een pull request naar main klaar met het nieuwe model.pkl.
+# De merge van die PR start "Deploy model-API naar Oracle VM" (deploy-api.yml), daarna de smoke test.
+#
+#   push (citi_bike/Kobe/...) -> tests -> train.py (kwaliteitspoort) -> check_model.py -> PR -> merge -> deploy -> smoke test
+#
+# Vereist: Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests".
+on:
+  push:
+    branches-ignore:
+      - "auto/**"                 # de branch die deze workflow zelf aanmaakt
+    paths:
+      - "citi_bike/Kobe/citibike.py"
+      - "citi_bike/Kobe/train.py"
+      - "citi_bike/Kobe/test_features.py"
+      - "citi_bike/Kobe/data/model_table.parquet"
+      - "citi_bike/Kobe/data/zones.json"
+      - "citi_bike/Kobe/models/best_params.json"
+      - "deploy/citi_bike_demand/api.py"
+      - ".github/workflows/citi_bike_demand_retrain.yml"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Kwaliteitspoort negeren"
+        type: boolean
+        default: false
+
+concurrency:
+  group: citi-bike-demand-retrain
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: deploy/requirements.txt
+
+      # Zelfde versies als de API op de VM, anders laadt het model daar niet.
+      - name: Dependencies installeren
+        # pyarrow 26+ vereist numpy 2; de API zit vast op numpy 1.26.4 (zelfde als bij het trainen).
+        run: pip install -r deploy/requirements.txt "pyarrow==25.0.1" requests pytest httpx
+
+      - name: Feature-code van API en training gelijk?
+        run: python -m pytest -q citi_bike/Kobe/test_features.py
+
+      - name: Hertrainen (met kwaliteitspoort)
+        run: |
+          python citi_bike/Kobe/train.py ${{ inputs.force && '--force' || '' }} | tee train.log
+          {
+            echo "### Citi Bike-vraagmodel hertraind"
+            echo '```'
+            cat train.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: API met het nieuwe model testen
+        run: python deploy/check_model.py deploy
+
+      - name: Pull request met het nieuwe model
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: auto/citi-bike-demand-model
+          base: main
+          add-paths: |
+            deploy/citi_bike_demand/model.pkl
+          commit-message: "Citi Bike-vraagmodel automatisch hertraind"
+          title: "Nieuw Citi Bike-vraagmodel (automatisch hertraind)"
+          body-path: train.log
+          delete-branch: true

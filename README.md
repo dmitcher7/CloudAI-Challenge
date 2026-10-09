@@ -32,17 +32,19 @@ deploy/                      ← alles wat naar de VM gaat
 ├── app.py                   ← start de API en koppelt beide modellen
 ├── requirements.txt         ← pakketten voor de VM
 ├── check_model.py           ← test API + modellen vóór elke deploy
-├── web/                     ← index.html (keuzepagina), mushrooms.html, citi_bike.html
+├── web/                     ← index.html (keuzepagina), mushrooms.html, citi_bike.html, citi_bike_demand.html
 ├── mushrooms/               ← api.py + stacking.pkl
-└── citi_bike/               ← api.py + model.pkl
+├── citi_bike/               ← api.py + model.pkl (ritduur)
+└── citi_bike_demand/        ← api.py + model.pkl (vraag per zone per uur, zie citi_bike/Kobe/)
 ```
 
 | Adres | Wat |
 |---|---|
 | `/` | keuzepagina |
-| `/mushrooms.html`, `/citi_bike.html` | webpagina per model |
+| `/mushrooms.html`, `/citi_bike.html`, `/citi_bike_demand.html` | webpagina per model |
 | `GET /mushrooms/`, `POST /mushrooms/predict` | mushroom-model (eetbaar 0 / giftig 1) |
 | `GET /citi_bike/`, `POST /citi_bike/predict` | Citi Bike-model (ritduur in minuten) |
+| `GET /citi_bike_demand/`, `POST /citi_bike_demand/predict`, `POST /citi_bike_demand/predict_day` | Citi Bike-vraagmodel (vertrekken per zone per uur); hertraind via `.github/workflows/citi_bike_demand_retrain.yml` |
 | `/health`, `/docs` | status en Swagger |
 
 Lokaal starten: `cd deploy && pip install -r requirements.txt && uvicorn app:app --port 8000`.

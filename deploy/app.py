@@ -1,11 +1,13 @@
-"""Start de API op de VM en koppelt beide modellen.
+"""Start de API op de VM en koppelt alle modellen.
 
     /                     keuzepagina (web/index.html)
     /mushrooms.html       webpagina mushroom-model
     /citi_bike.html       webpagina Citi Bike-model
+    /citi_bike_demand.html  webpagina Citi Bike-vraagmodel
     /mushrooms/           model-info      POST /mushrooms/predict
     /citi_bike/           model-info      POST /citi_bike/predict
-    /health               ok zodra beide modellen geladen zijn
+    /citi_bike_demand/    model-info      POST /citi_bike_demand/predict, /citi_bike_demand/predict_day
+    /health               ok zodra alle modellen geladen zijn
     /docs                 Swagger
 
 Starten:  uvicorn app:app --host 0.0.0.0 --port 8000   (vanuit deze map)
@@ -20,11 +22,12 @@ from fastapi.staticfiles import StaticFiles
 
 # Elk model laadt bij het importeren; een kapot of incompatibel .pkl laat de API dus niet starten.
 from citi_bike import api as citi_bike_api
+from citi_bike_demand import api as citi_bike_demand_api
 from mushrooms import api as mushrooms_api
 
 HERE = Path(__file__).parent
 API_KEY = os.environ.get("API_KEY")  # optioneel: indien gezet is de header X-API-Key verplicht bij POST
-MODEL_PATHS = [mushrooms_api.MODEL_PATH, citi_bike_api.MODEL_PATH]  # gebruikt door de deploy-workflow
+MODEL_PATHS = [mushrooms_api.MODEL_PATH, citi_bike_api.MODEL_PATH, citi_bike_demand_api.MODEL_PATH]  # gebruikt door de deploy-workflow
 
 
 def check_api_key(request: Request, x_api_key: str | None = Header(default=None)):
@@ -44,12 +47,14 @@ app.add_middleware(
 
 app.include_router(mushrooms_api.router, prefix="/mushrooms", dependencies=[Depends(check_api_key)])
 app.include_router(citi_bike_api.router, prefix="/citi_bike", dependencies=[Depends(check_api_key)])
+app.include_router(citi_bike_demand_api.router, prefix="/citi_bike_demand", dependencies=[Depends(check_api_key)])
 
 
 @app.get("/health")
 def health():
     return {"status": "ok", "models": {"mushrooms": mushrooms_api.MODEL_PATH.name,
-                                       "citi_bike": citi_bike_api.MODEL_PATH.name}}
+                                       "citi_bike": citi_bike_api.MODEL_PATH.name,
+                                       "citi_bike_demand": citi_bike_demand_api.MODEL_PATH.name}}
 
 
 @app.get("/app", include_in_schema=False)
