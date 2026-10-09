@@ -10,6 +10,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 from sklearn.compose import ColumnTransformer, TransformedTargetRegressor
 from sklearn.dummy import DummyRegressor
 from sklearn.ensemble import ExtraTreesRegressor, HistGradientBoostingRegressor
@@ -24,13 +25,28 @@ from sklearn.metrics import (
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
-from src.config import MODEL_DIR, PROCESSED_DIR, RANDOM_STATE, REPORT_DIR, TARGET
+from src.config import (
+    MAX_DURATION_MINUTES,
+    MODEL_DIR,
+    PROCESSED_DIR,
+    RANDOM_STATE,
+    REPORT_DIR,
+    TARGET,
+    WEATHER_PATH,
+)
+from src.data.weather import WEATHER_FEATURES, attach_hourly_weather
 from src.features.build import make_features
+from src.models.transforms import inverse_log_duration
 
-CATEGORICAL = ["rideable_type", "member_casual", "start_station_id"]
+CATEGORICAL = ["rideable_type", "member_casual", "start_station_id", "end_station_id"]
 NUMERIC = [
     "start_lat",
     "start_lng",
+    "end_lat",
+    "end_lng",
+    "direct_distance_km",
+    "delta_lat",
+    "delta_lng",
     "start_hour_sin",
     "start_hour_cos",
     "weekday_sin",
@@ -38,9 +54,9 @@ NUMERIC = [
     "month_sin",
     "month_cos",
     "is_weekend",
+    "is_holiday",
+    *WEATHER_FEATURES,
 ]
-
-
 def temporal_split(frame: pd.DataFrame, test_fraction: float = 0.2):
     """Split chronologically so future records never inform past evaluation."""
     ordered = frame.sort_values("started_at").reset_index(drop=True)
@@ -127,7 +143,7 @@ def candidate_models(quick: bool = False) -> dict[str, object]:
         name: TransformedTargetRegressor(
             regressor=estimator,
             func=np.log1p,
-            inverse_func=np.expm1,
+            inverse_func=inverse_log_duration,
             check_inverse=False,
         )
         for name, estimator in estimators.items()
@@ -157,18 +173,25 @@ def train_and_compare(
     metrics_path: Path = REPORT_DIR / "metrics.csv",
     max_rows: int | None = 500_000,
     quick: bool = False,
+    weather_path: Path = WEATHER_PATH,
 ) -> tuple[dict, pd.DataFrame]:
     columns = [
         "started_at",
         "rideable_type",
         "member_casual",
         "start_station_id",
+        "end_station_id",
         "start_lat",
         "start_lng",
+        "end_lat",
+        "end_lng",
         TARGET,
     ]
+    available_columns = set(pq.read_schema(data_path).names)
+    columns.extend(name for name in WEATHER_FEATURES if name in available_columns)
     frame = pd.read_parquet(data_path, columns=columns).sort_values("started_at")
     frame = cap_rows_across_time(frame, max_rows)
+    frame = attach_hourly_weather(frame, weather_path)
     if len(frame) < 100:
         raise ValueError("At least 100 valid rows are needed for model comparison")
 
@@ -181,7 +204,7 @@ def train_and_compare(
     for name, model in candidate_models(quick=quick).items():
         print(f"Training {name} on {len(train):,} rows …", flush=True)
         model.fit(x_train, y_train)
-        predictions = np.maximum(0, model.predict(x_test))
+        predictions = np.clip(model.predict(x_test), 0, MAX_DURATION_MINUTES)
         fitted[name] = model
         results.append(
             {
@@ -205,7 +228,10 @@ def train_and_compare(
         "training_period": [str(train["started_at"].min()), str(train["started_at"].max())],
         "holdout_period": [str(test["started_at"].min()), str(test["started_at"].max())],
         "metrics": metrics.iloc[0].to_dict(),
-        "limitations": "No weather/events/availability; prediction is conditional on recorded trips.",
+        "limitations": (
+            "Destination is treated as planned input; weather is hourly and city-level. "
+            "Events, traffic, route choice and bike availability are unavailable."
+        ),
     }
 
     model_path.parent.mkdir(parents=True, exist_ok=True)
@@ -226,7 +252,13 @@ def main() -> None:
     parser.add_argument("--data", type=Path, default=PROCESSED_DIR / "trips.parquet")
     parser.add_argument("--model", type=Path, default=MODEL_DIR / "duration_model.joblib")
     parser.add_argument("--metrics", type=Path, default=REPORT_DIR / "metrics.csv")
-    parser.add_argument("--max-rows", type=int, default=500_000, help="0 means all rows")
+    parser.add_argument("--weather", type=Path, default=WEATHER_PATH)
+    parser.add_argument(
+        "--max-rows",
+        type=int,
+        default=500_000,
+        help="maximum rows sampled evenly across the full time range; 0 means all rows",
+    )
     parser.add_argument("--quick", action="store_true", help="small estimators for CI/smoke tests")
     args = parser.parse_args()
     train_and_compare(
@@ -235,9 +267,9 @@ def main() -> None:
         args.metrics,
         max_rows=args.max_rows or None,
         quick=args.quick,
+        weather_path=args.weather,
     )
 
 
 if __name__ == "__main__":
     main()
-

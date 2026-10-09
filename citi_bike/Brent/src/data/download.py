@@ -2,7 +2,7 @@
 
 Examples
 --------
-python -m src.data.download --start 2024-01 --end 2024-03
+python -m src.data.download
 python -m src.data.download --start 2024-01 --end 2024-12 --force
 """
 
@@ -17,7 +17,7 @@ from zipfile import BadZipFile, ZipFile
 
 import requests
 
-from src.config import RAW_DIR
+from src.config import DEFAULT_END_MONTH, DEFAULT_START_MONTH, RAW_DIR
 
 BASE_URL = "https://s3.amazonaws.com/tripdata/{yyyymm}-citibike-tripdata.zip"
 
@@ -119,8 +119,12 @@ def download_range(start: str, end: str, output_dir: Path = RAW_DIR, force: bool
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--start", default="2024-01", help="first month (YYYY-MM)")
-    parser.add_argument("--end", default="2024-03", help="last month, inclusive (YYYY-MM)")
+    parser.add_argument(
+        "--start", default=DEFAULT_START_MONTH, help="first month (YYYY-MM)"
+    )
+    parser.add_argument(
+        "--end", default=DEFAULT_END_MONTH, help="last month, inclusive (YYYY-MM)"
+    )
     parser.add_argument("--output-dir", type=Path, default=RAW_DIR)
     parser.add_argument("--force", action="store_true", help="redownload verified files")
     args = parser.parse_args()
@@ -129,4 +133,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -15,6 +15,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from src.config import (
+    DEFAULT_END_MONTH,
+    DEFAULT_START_MONTH,
     MAX_DURATION_MINUTES,
     MIN_DURATION_MINUTES,
     PROCESSED_DIR,
@@ -137,7 +139,8 @@ def prepare_archives(
     archives = sorted(raw_dir.glob("*-citibike-tripdata.zip"))
     if not archives:
         raise FileNotFoundError(
-            f"No archives in {raw_dir}. Run: python -m src.data.download --start 2024-01 --end 2024-03"
+            f"No archives in {raw_dir}. Run: python -m src.data.download "
+            f"--start {DEFAULT_START_MONTH} --end {DEFAULT_END_MONTH}"
         )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -198,4 +201,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

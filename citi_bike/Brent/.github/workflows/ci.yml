@@ -17,12 +17,12 @@ on:
       end_month:
         description: "Last official month (YYYY-MM)"
         required: false
-        default: "2024-03"
+        default: "2024-12"
 
 jobs:
   validate-and-train:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -40,10 +40,16 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.official_data }}
         run: |
           python -m src.data.download --start "${{ inputs.start_month }}" --end "${{ inputs.end_month }}"
+          python -m src.data.weather --start "${{ inputs.start_month }}" --end "${{ inputs.end_month }}"
           python -m src.data.prepare
 
-      - name: Train and compare
+      - name: Train smoke model
+        if: ${{ github.event_name != 'workflow_dispatch' || !inputs.official_data }}
         run: python -m src.models.train --quick --max-rows 100000
+
+      - name: Train official full-year model
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.official_data }}
+        run: python -m src.models.train --max-rows 500000
       - name: Verify API imports
         run: python -c "from app.main import app; assert app.title"
       - uses: actions/upload-artifact@v4
@@ -61,4 +67,3 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t green-wheels:${{ github.sha }} .
-
