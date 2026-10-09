@@ -1,24 +1,20 @@
 {
-  "notebook": "05a_baseline",
-  "model": "Baseline: gemiddelde per zone x uur x weekend",
+  "notebook": "07_baseline_all_data",
+  "model": "Baseline: zone x uur x weekend, laatste 12 maanden",
   "cv_mae": [
-    60.5741,
-    58.4869,
-    69.989,
-    52.3978,
-    54.4795
+    47.9278,
+    61.246,
+    63.6354
   ],
-  "cv_mae_mean": 59.1855,
+  "cv_mae_mean": 57.6031,
   "cv_poisson_deviance": [
-    33.4426,
-    31.3548,
-    43.1854,
-    29.2525,
-    27.2459
+    30.6825,
+    40.9817,
+    35.6484
   ],
-  "cv_fit_seconds": 0.1,
-  "test_mae": 59.2751,
-  "test_rmse": 96.4412,
-  "test_r2": 0.7235,
-  "test_poisson_deviance": 34.1876
+  "cv_fit_seconds": 0.4,
+  "test_mae": 70.964,
+  "test_rmse": 115.4286,
+  "test_r2": 0.6802,
+  "test_poisson_deviance": 47.6182
 }
