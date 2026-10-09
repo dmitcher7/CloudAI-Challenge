@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Voorspel hoeveel Citi Bikes er per uur vertrekken in een zone van New York." />
+    <title>Green Wheels · Vraag per uur</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;600;700&display=swap');
+      :root { --ink:#17201b; --paper:#f2f0e8; --acid:#c8ff54; --line:#c9cdc7; --muted:#647068; --bar:#2f6f4f; }
+      * { box-sizing:border-box; }
+      body { margin:0; min-height:100vh; color:var(--ink); background:var(--paper); font-family:Manrope, sans-serif; }
+      body::before { content:""; position:fixed; inset:0; pointer-events:none; opacity:.28; background-image:radial-gradient(#89938b 0.6px,transparent 0.6px); background-size:6px 6px; }
+      main { position:relative; max-width:1180px; margin:auto; padding:6vh 32px 48px; display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:start; }
+      .eyebrow,.card-head,footer,.mono { font-family:"DM Mono",monospace; text-transform:uppercase; letter-spacing:.08em; font-size:12px; }
+      .eyebrow::before { content:""; display:inline-block; width:36px; border-top:2px solid; margin:0 12px 3px 0; }
+      h1 { font-size:clamp(44px,5.5vw,78px); line-height:.9; letter-spacing:-.06em; margin:26px 0; }
+      h1 em { font-style:normal; position:relative; z-index:0; }
+      h1 em::after { content:""; position:absolute; left:-.02em; right:-.07em; bottom:.03em; height:.24em; background:var(--acid); z-index:-1; transform:rotate(-1deg); }
+      .lead { color:var(--muted); font-size:17px; line-height:1.6; max-width:540px; }
+      #map { height:360px; border:1px solid var(--ink); margin-top:24px; z-index:0; }
+      .hint { color:var(--muted); font-size:13px; margin-top:8px; }
+      .card { background:#fff; border:1px solid var(--ink); padding:28px; box-shadow:12px 12px 0 var(--ink); }
+      .card-head { display:flex; justify-content:space-between; gap:12px; border-bottom:1px solid var(--line); padding-bottom:16px; }
+      .card-head p { margin:0; }
+      .status { color:#9b6210; text-align:right; }
+      .status.ok { color:#317338; }
+      h2 { font-size:28px; letter-spacing:-.04em; margin:22px 0; }
+      form { display:grid; gap:16px; }
+      label { display:grid; gap:7px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+      input,select { width:100%; border:1px solid var(--line); background:#fafaf7; padding:12px; font:14px "DM Mono",monospace; color:var(--ink); border-radius:0; }
+      input:focus,select:focus { outline:2px solid var(--acid); border-color:var(--ink); }
+      .split { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+      .weather { font-size:13px; color:var(--muted); line-height:1.5; border-left:3px solid var(--line); padding:4px 0 4px 12px; }
+      button { border:1px solid var(--ink); background:var(--ink); color:#fff; padding:15px; font:600 14px Manrope; display:flex; justify-content:space-between; cursor:pointer; }
+      button:hover { background:var(--acid); color:var(--ink); }
+      .result { margin-top:22px; border-left:5px solid var(--acid); background:#f3f7eb; padding:16px 18px; }
+      .result strong { display:block; font-size:34px; letter-spacing:-.04em; }
+      .result small { color:var(--muted); line-height:1.5; display:block; }
+      .result.error { border-color:#d64e3a; background:#fff0ed; }
+      svg.chart { width:100%; height:auto; margin-top:14px; display:block; }
+      svg.chart text { font:10px "DM Mono",monospace; fill:var(--muted); }
+      svg.chart rect.bar { fill:var(--bar); }
+      svg.chart rect.bar.peak { fill:var(--ink); }
+      svg.chart rect.bar:hover { fill:#7fb800; }
+      footer { position:relative; border-top:1px solid var(--line); max-width:1180px; margin:auto; padding:25px 32px; display:flex; justify-content:space-between; }
+      footer a { color:inherit; }
+      @media(max-width:860px){ main{grid-template-columns:1fr;padding:32px 16px}.card{box-shadow:7px 7px 0;padding:20px}.split{grid-template-columns:1fr}#map{height:280px}footer{padding:20px 16px} }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="intro">
+        <p class="eyebrow">NYC · CITI BIKE · VRAAG</p>
+        <h1>Hoeveel fietsen <em>vertrekken</em> er?</h1>
+        <p class="lead">Verwacht aantal vertrekken per uur in een zone van New York, op basis van tijdstip, feestdagen en het weer. Handig om fietsen op tijd te herverdelen: een leeg station in de spits is een gemiste groene rit.</p>
+        <div id="map" role="application" aria-label="Kaart met zones"></div>
+        <p class="hint">Klik op een cirkel om een zone te kiezen. Grotere cirkel = meer ritten in 2024.</p>
+      </section>
+
+      <section class="card" aria-labelledby="form-title">
+        <div class="card-head">
+          <p>Demand forecast</p>
+          <span id="health" class="status">model controleren…</span>
+        </div>
+        <h2 id="form-title">Kies zone en dag</h2>
+        <form id="demand-form">
+          <label>Zone<select id="zone" required></select></label>
+          <div class="split">
+            <label>Datum<input required id="date" type="date" /></label>
+            <label>Weer
+              <select id="scenario">
+                <option value="actual">Echt weer</option>
+                <option value="dry">Stel: droog</option>
+                <option value="rain">Stel: hele dag regen</option>
+              </select>
+            </label>
+          </div>
+          <div id="weather" class="weather">Weer wordt opgehaald…</div>
+          <button type="submit">Voorspel de vraag <span>→</span></button>
+        </form>
+        <div id="result" class="result" hidden aria-live="polite"></div>
+      </section>
+    </main>
+    <footer><a href="index.html">← Alle modellen</a><a id="docs" href="/docs">API-documentatie ↗</a></footer>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+      // Geserveerd door de API zelf -> zelfde adres. Lokaal geopend -> Oracle VM.
+      // Overschrijven met ?api=http://localhost:8000
+      const API_URL = new URLSearchParams(location.search).get("api")
+        || (location.protocol.startsWith("http") ? location.origin : "http://89.168.73.76:8000");
+      const NYC = { lat: 40.73, lng: -73.97 };
+      const FALLBACK = { temperature_c: 15, precipitation_mm: 0, wind_kmh: 12 };   // als het weer niet op te halen is
+      const $ = (id) => document.getElementById(id);
+      $("docs").href = `${API_URL}/docs`;
+
+      let hourlyWeather = null;     // 24 x {temperature_c, precipitation_mm, wind_kmh}
+      let markers = {};
+      const today = new Date();
+      today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+      $("date").value = today.toISOString().slice(0, 10);
+
+      // ---------- Kaart + zones (uit de model-info van de API) ----------
+      const map = L.map("map", { scrollWheelZoom: false }).setView([NYC.lat, NYC.lng], 11);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 16, attribution: "&copy; OpenStreetMap-bijdragers",
+      }).addTo(map);
+
+      function selectZone(zone) {
+        $("zone").value = zone;
+        for (const [id, marker] of Object.entries(markers)) {
+          marker.setStyle(Number(id) === Number(zone)
+            ? { color: "#17201b", fillColor: "#c8ff54", fillOpacity: .9, weight: 3 }
+            : { color: "#2f6f4f", fillColor: "#2f6f4f", fillOpacity: .45, weight: 1 });
+        }
+      }
+
+      fetch(`${API_URL}/citi_bike_demand/`)
+        .then((response) => response.json())
+        .then((info) => {
+          const element = $("health");
+          element.textContent = `${info.model} · online`;
+          element.classList.add("ok");
+          const maxTrips = Math.max(...info.zones.map((z) => z.trips));
+          for (const zone of info.zones) {
+            $("zone").add(new Option(`${zone.zone} · ${zone.name} (${zone.n_stations} stations)`, zone.zone));
+            markers[zone.zone] = L.circleMarker([zone.lat, zone.lng], { radius: 6 + 18 * Math.sqrt(zone.trips / maxTrips) })
+              .bindTooltip(`Zone ${zone.zone}: ${zone.name}<br>${zone.trips.toLocaleString("nl-BE")} ritten in 2024`)
+              .on("click", () => selectZone(zone.zone))
+              .addTo(map);
+          }
+          selectZone(info.zones[0].zone);
+          $("zone").addEventListener("change", (e) => selectZone(e.target.value));
+        })
+        .catch(() => { $("health").textContent = "API offline"; });
+
+      // ---------- Weer (Open-Meteo: voorspelling of archief, zelfde bron als bij het trainen) ----------
+      async function loadWeather() {
+        const day = $("date").value;
+        const daysAhead = (new Date(day) - new Date(today.toISOString().slice(0, 10))) / 864e5;
+        const base = daysAhead < -60 ? "https://archive-api.open-meteo.com/v1/archive" : "https://api.open-meteo.com/v1/forecast";
+        const url = `${base}?latitude=${NYC.lat}&longitude=${NYC.lng}&hourly=temperature_2m,precipitation,wind_speed_10m`
+          + `&timezone=America%2FNew_York&wind_speed_unit=kmh&start_date=${day}&end_date=${day}`;
+        $("weather").textContent = "Weer wordt opgehaald…";
+        try {
+          if (daysAhead > 15) throw new Error("verder dan 16 dagen vooruit");
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const h = (await response.json()).hourly;
+          hourlyWeather = h.time.slice(0, 24).map((_, i) => ({
+            temperature_c: h.temperature_2m[i] ?? FALLBACK.temperature_c,
+            precipitation_mm: h.precipitation[i] ?? 0,
+            wind_kmh: h.wind_speed_10m[i] ?? FALLBACK.wind_kmh,
+          }));
+          const temps = hourlyWeather.map((w) => w.temperature_c);
+          const rain = hourlyWeather.reduce((s, w) => s + w.precipitation_mm, 0);
+          $("weather").textContent = `Open-Meteo: ${Math.min(...temps).toFixed(0)}–${Math.max(...temps).toFixed(0)} °C, `
+            + `${rain.toFixed(1)} mm neerslag, wind tot ${Math.max(...hourlyWeather.map((w) => w.wind_kmh)).toFixed(0)} km/u.`;
+        } catch (error) {
+          hourlyWeather = Array.from({ length: 24 }, () => ({ ...FALLBACK }));
+          $("weather").textContent = `Geen weerdata (${error.message}); we gebruiken een droge dag van 15 °C.`;
+        }
+      }
+
+      function scenarioWeather() {
+        const scenario = $("scenario").value;
+        return hourlyWeather.map((w) => ({
+          ...w,
+          precipitation_mm: scenario === "dry" ? 0 : scenario === "rain" ? Math.max(2, w.precipitation_mm) : w.precipitation_mm,
+        }));
+      }
+
+      // ---------- Grafiek: 24 staven ----------
+      function chart(values) {
+        const W = 480, H = 170, pad = 22, bw = (W - pad) / 24;
+        const max = Math.max(1, ...values);
+        const peak = values.indexOf(Math.max(...values));
+        let bars = "";
+        values.forEach((v, h) => {
+          const bh = (H - 30) * v / max;
+          bars += `<rect class="bar${h === peak ? " peak" : ""}" x="${pad + h * bw + 1}" y="${H - 18 - bh}" width="${bw - 2}" height="${bh}"><title>${String(h).padStart(2, "0")}:00 – ${v} vertrekken</title></rect>`;
+          if (h % 3 === 0) bars += `<text x="${pad + h * bw + bw / 2}" y="${H - 4}" text-anchor="middle">${String(h).padStart(2, "0")}u</text>`;
+        });
+        return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Verwachte vertrekken per uur">`
+          + `<text x="0" y="12">${Math.round(max)}</text><line x1="${pad}" x2="${W}" y1="${H - 18}" y2="${H - 18}" stroke="#c9cdc7"/>${bars}</svg>`;
+      }
+
+      $("date").addEventListener("change", loadWeather);
+      loadWeather();
+
+      $("demand-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const result = $("result");
+        result.hidden = false;
+        result.className = "result";
+        result.textContent = "Berekenen…";
+        if (!hourlyWeather) await loadWeather();
+        const payload = { zone: Number($("zone").value), date: $("date").value, weather: scenarioWeather() };
+        try {
+          const response = await fetch(`${API_URL}/citi_bike_demand/predict_day`, {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail));
+          const peak = data.hourly_trips.indexOf(Math.max(...data.hourly_trips));
+          result.innerHTML = `<strong>${data.total_trips.toLocaleString("nl-BE")} vertrekken</strong>`
+            + `<small>Zone ${data.zone} (${data.zone_name}) op ${data.date}. Drukste uur: ${String(peak).padStart(2, "0")}:00 `
+            + `met ± ${Math.round(data.hourly_trips[peak])} vertrekken. Gemiddelde fout op de testset: ± ${data.holdout_mae_trips == null ? "n.v.t." : Number(data.holdout_mae_trips).toFixed(0)} vertrekken per uur.</small>`
+            + chart(data.hourly_trips);
+        } catch (error) {
+          result.classList.add("error");
+          result.textContent = error.message;
+        }
+      });
+    </script>
+  </body>
+</html>

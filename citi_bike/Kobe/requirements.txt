@@ -1,0 +1,21 @@
+# Python 3.11 (PyCaret 3.3 werkt niet op Python 3.12+); zelfde omgeving als mushrooms/Kobe.
+#   py -3.11 -m venv venv
+#   venv\Scripts\python -m pip install -r requirements.txt
+# scikit-learn 1.4.2 / numpy 1.26.4: zelfde versies als deploy/requirements.txt, anders laadt model.pkl niet op de VM.
+scikit-learn==1.4.2
+numpy==1.26.4
+pandas==2.1.4
+scipy==1.11.4
+joblib==1.3.2
+pyarrow==25.0.1
+requests==2.34.2
+matplotlib==3.7.5
+statsmodels==0.15.0
+patsy==1.0.3
+pycaret==3.3.2       # 05b (AutoML)
+lightgbm==4.5.0      # via PyCaret; 4.7 crasht op Windows
+xgboost==3.2.0       # via PyCaret
+ipykernel==7.3.0
+nbformat==5.11.1
+nbconvert==7.17.1    # notebooks vanuit de terminal uitvoeren
+pytest               # test_features.py

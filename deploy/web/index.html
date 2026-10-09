@@ -43,7 +43,7 @@
       <section class="intro">
         <p class="eyebrow">CLOUDAI CHALLENGE · GIT PUSH &amp; PRAY</p>
         <h1>Twee datasets, <em>één API.</em></h1>
-        <p class="lead">Beide modellen draaien op dezelfde Oracle VM en worden automatisch gedeployed bij elke merge naar main. Kies hiernaast een model om het uit te proberen.</p>
+        <p class="lead">Alle modellen draaien op dezelfde Oracle VM en worden automatisch gedeployed bij elke merge naar main. Kies hiernaast een model om het uit te proberen.</p>
         <div class="facts">
           <div><span>01</span><p>FastAPI op Oracle Cloud</p></div>
           <div><span>02</span><p>CI/CD met GitHub Actions</p></div>
@@ -64,6 +64,12 @@
           <p class="text">Hoe lang ben je onderweg? Schatting van de ritduur op basis van vertrekmoment en station.</p>
           <div class="go">Probeer het model <span>→</span></div>
         </a>
+        <a class="card" href="citi_bike_demand.html">
+          <div class="card-head"><p>Regressie · tellingen</p><span id="citi_bike_demand-status" class="status">controleren…</span></div>
+          <h2>🚲 Citi Bike-vraag</h2>
+          <p class="text">Hoeveel fietsen vertrekken er per uur in een zone? Voorspelling op basis van tijdstip en weer.</p>
+          <div class="go">Probeer het model <span>→</span></div>
+        </a>
       </section>
     </main>
     <footer><span>CLOUDAI / 2026</span><a id="docs" href="/docs">API-documentatie ↗</a></footer>
@@ -73,7 +79,7 @@
         || (location.protocol.startsWith("http") ? location.origin : "http://89.168.73.76:8000");
       document.getElementById("docs").href = `${API_URL}/docs`;
 
-      for (const name of ["mushrooms", "citi_bike"]) {
+      for (const name of ["mushrooms", "citi_bike", "citi_bike_demand"]) {
         const element = document.getElementById(`${name}-status`);
         fetch(`${API_URL}/${name}/`)
           .then((response) => response.json())
