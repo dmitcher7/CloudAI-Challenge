@@ -12,7 +12,7 @@
       <section class="intro">
         <p class="eyebrow">NYC · CITI BIKE · ML</p>
         <h1>Hoe lang ben je <em>onderweg?</em></h1>
-        <p class="lead">Een uitlegbare schatting op basis van wat we bij vertrek weten—geen informatie uit de toekomst.</p>
+        <p class="lead">Een schatting op basis van vertrek, geplande bestemming en het verwachte weer—geen informatie uit de toekomst.</p>
         <div class="facts">
           <div><span>01</span><p>Tijdsgebaseerde evaluatie</p></div>
           <div><span>02</span><p>Geen target leakage</p></div>
@@ -41,6 +41,11 @@
             <label>Latitude<input required id="start_lat" type="number" step="0.0001" min="40.4" max="41.1" value="40.7359" /></label>
             <label>Longitude<input required id="start_lng" type="number" step="0.0001" min="-74.4" max="-73.5" value="-74.0303" /></label>
           </div>
+          <label>Bestemmingsstation-ID<input required id="end_station_id" value="JC115" maxlength="100" /></label>
+          <div class="split">
+            <label>Bestemming latitude<input required id="end_lat" type="number" step="0.0001" min="40.4" max="41.1" value="40.7177" /></label>
+            <label>Bestemming longitude<input required id="end_lng" type="number" step="0.0001" min="-74.4" max="-73.5" value="-74.0438" /></label>
+          </div>
           <button type="submit">Bereken ritduur <span>→</span></button>
         </form>
         <div id="result" class="result" hidden aria-live="polite"></div>
@@ -50,4 +55,3 @@
     <script src="/static/app.js"></script>
   </body>
 </html>
-

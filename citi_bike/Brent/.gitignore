@@ -25,6 +25,9 @@ __pycache__/
 .coverage
 htmlcov/
 
+# Keep reproducible model-comparison results even if a parent ignores CSV files.
+!reports/metrics.csv
+
 # Local configuration and cloud output
 .env
 .aws/

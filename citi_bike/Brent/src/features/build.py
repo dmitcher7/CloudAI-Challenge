@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from pandas.tseries.holiday import USFederalHolidayCalendar
 
 from src.config import MODEL_FEATURES
+from src.data.weather import WEATHER_FEATURES
 
 
 def make_features(frame: pd.DataFrame) -> pd.DataFrame:
@@ -23,10 +25,34 @@ def make_features(frame: pd.DataFrame) -> pd.DataFrame:
     result["month_sin"] = np.sin(2 * np.pi * month / 12)
     result["month_cos"] = np.cos(2 * np.pi * month / 12)
     result["is_weekend"] = (weekday >= 5).astype("int8")
+    holidays = (
+        USFederalHolidayCalendar().holidays(start=started.min(), end=started.max())
+        if started.notna().any()
+        else pd.DatetimeIndex([])
+    )
+    result["is_holiday"] = started.dt.normalize().isin(holidays).astype("int8")
 
-    for column in ["rideable_type", "member_casual", "start_station_id"]:
+    lat1 = np.radians(pd.to_numeric(result["start_lat"], errors="coerce"))
+    lng1 = np.radians(pd.to_numeric(result["start_lng"], errors="coerce"))
+    lat2 = np.radians(pd.to_numeric(result["end_lat"], errors="coerce"))
+    lng2 = np.radians(pd.to_numeric(result["end_lng"], errors="coerce"))
+    delta_lat_radians = lat2 - lat1
+    delta_lng_radians = lng2 - lng1
+    haversine = np.sin(delta_lat_radians / 2) ** 2 + (
+        np.cos(lat1) * np.cos(lat2) * np.sin(delta_lng_radians / 2) ** 2
+    )
+    result["direct_distance_km"] = 6371.0088 * 2 * np.arcsin(np.sqrt(haversine.clip(0, 1)))
+    result["delta_lat"] = pd.to_numeric(result["end_lat"], errors="coerce") - pd.to_numeric(
+        result["start_lat"], errors="coerce"
+    )
+    result["delta_lng"] = pd.to_numeric(result["end_lng"], errors="coerce") - pd.to_numeric(
+        result["start_lng"], errors="coerce"
+    )
+
+    for column in ["rideable_type", "member_casual", "start_station_id", "end_station_id"]:
         result[column] = result[column].astype("string").fillna("unknown")
-    for column in ["start_lat", "start_lng"]:
+    for column in ["start_lat", "start_lng", "end_lat", "end_lng", *WEATHER_FEATURES]:
+        if column not in result:
+            result[column] = np.nan
         result[column] = pd.to_numeric(result[column], errors="coerce")
     return result[MODEL_FEATURES]
-

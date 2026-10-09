@@ -26,15 +26,17 @@ $("trip-form").addEventListener("submit", async (event) => {
     start_station_id: $("start_station_id").value,
     start_lat: Number($("start_lat").value),
     start_lng: Number($("start_lng").value),
+    end_station_id: $("end_station_id").value,
+    end_lat: Number($("end_lat").value),
+    end_lng: Number($("end_lng").value),
   };
   try {
     const response = await fetch("/predict", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || "Voorspelling mislukt");
-    result.innerHTML = `<strong>${data.predicted_duration_minutes} min</strong><small>${data.message} Hold-out MAE: ${data.holdout_mae_minutes ?? "n.v.t."} min.</small>`;
+    result.innerHTML = `<strong>${data.predicted_duration_minutes} min</strong><small>${data.message} Weerbron: ${data.weather_source}. Hold-out MAE: ${data.holdout_mae_minutes ?? "n.v.t."} min.</small>`;
   } catch (error) {
     result.classList.add("error");
     result.textContent = error.message;
   }
 });
-
