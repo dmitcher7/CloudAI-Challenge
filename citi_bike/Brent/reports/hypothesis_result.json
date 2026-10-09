@@ -1,0 +1,17 @@
+{
+  "hypothesis": "casual duration tends to be greater than member duration",
+  "n_casual": 879005,
+  "n_member": 5779726,
+  "median_casual": 11.541683333333333,
+  "median_member": 7.696416666666667,
+  "median_difference": 3.8452666666666664,
+  "median_difference_ci95": [
+    3.574903958333334,
+    4.121586458333333
+  ],
+  "mann_whitney_u": 25955835916.5,
+  "one_sided_p_value": 0.0,
+  "p_value_interpretation": "below floating-point precision (reported as 0.0)",
+  "cliffs_delta_casual_minus_member": 0.2973875,
+  "note": "p-value uses capped deterministic samples; effect sizes use all rows or pair subsampling"
+}

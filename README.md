@@ -25,3 +25,29 @@ Binnen beide dataset-mappen hebben we een strikte structuur gehanteerd om effici
   
 * **De `FINAL/` map:** 
   Zodra de individuele experimenten klaar waren, hebben we de metrics (zoals accuracy en de foutenanalyse) naast elkaar gelegd. De code met de beste Exploratory Data Analysis, de slimste aanpak voor data cleaning (zoals het oplossen van bewuste multicollineariteit/valstrikken) en het best presterende model is vervolgens geselecteerd en samengevoegd in de `FINAL/` map. Deze map bevat onze definitieve pipeline die gekoppeld is aan de web-deployment en API.
+## Deployment (Oracle VM)
+
+```
+deploy/                      ← alles wat naar de VM gaat
+├── app.py                   ← start de API en koppelt beide modellen
+├── requirements.txt         ← pakketten voor de VM
+├── check_model.py           ← test API + modellen vóór elke deploy
+├── web/                     ← index.html (keuzepagina), mushrooms.html, citi_bike.html
+├── mushrooms/               ← api.py + stacking.pkl
+└── citi_bike/               ← api.py + model.pkl
+```
+
+| Adres | Wat |
+|---|---|
+| `/` | keuzepagina |
+| `/mushrooms.html`, `/citi_bike.html` | webpagina per model |
+| `GET /mushrooms/`, `POST /mushrooms/predict` | mushroom-model (eetbaar 0 / giftig 1) |
+| `GET /citi_bike/`, `POST /citi_bike/predict` | Citi Bike-model (ritduur in minuten) |
+| `/health`, `/docs` | status en Swagger |
+
+Lokaal starten: `cd deploy && pip install -r requirements.txt && uvicorn app:app --port 8000`.
+Testen: `python deploy/check_model.py`.
+
+Beide modellen draaien in hetzelfde proces en moeten dus met **dezelfde scikit-learn-versie** opgeslagen zijn
+als in `deploy/requirements.txt` (nu 1.4.2). Een merge naar `main` die iets in `deploy/` wijzigt, deployt
+automatisch via `.github/workflows/deploy-api.yml` (met rollback als de API niet start).
