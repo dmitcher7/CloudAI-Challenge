@@ -408,7 +408,9 @@ NOTEBOOKS = {
                 RUN_AUTOML = False
                 if RUN_AUTOML:
                     from src.models.automl import run_automl
-                    automl_result = run_automl(PROCESSED_DIR / "trips.parquet", seconds=600)
+                    automl_result = run_automl(
+                        PROCESSED_DIR / "trips.parquet", seconds=600, max_rows=100_000
+                    )
                     display(automl_result)
                 else:
                     print("Zet RUN_AUTOML=True na installatie van de optionele FLAML dependency.")
