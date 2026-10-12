@@ -35,7 +35,7 @@ python -m src.models.train --data data/processed/trips.parquet
 uvicorn app.main:app --reload
 ```
 
-De ritdownload gebruikt standaard het volledige kalenderjaar 2024 (`2024-01` t/m `2024-12`) en kan daardoor meerdere GB groot zijn. `src.data.weather` downloadt voor dezelfde periode een compacte uur-weertabel voor New York. De training neemt standaard maximaal 1.000.000 deterministisch en gelijkmatig over het hele jaar verdeelde ritten, zodat alle seizoenen vertegenwoordigd blijven zonder onnodig geheugengebruik. Gebruik `--max-rows 0` alleen wanneer de machine alle rijen aankan. Open na training <http://127.0.0.1:8000>. Vermeld de gebruikte maanden en steekproefgrootte altijd in de presentatie.
+De ritdownload gebruikt standaard de volledige officiële historie vanaf juni 2013 tot de nieuwste gepubliceerde maand. De downloader leest de officiële S3-inventaris: jaarbundels voor 2013–2023 en maandarchieven vanaf 2024 worden automatisch herkend; Jersey City-bestanden worden uitgesloten. `src.data.weather` haalt dezelfde periode op. De training leest standaard maximaal 1.000.000 deterministisch over de volledige tijdlijn verdeelde ritten rechtstreeks uit Parquet, zodat ieder jaar vertegenwoordigd blijft zonder eerst de volledige dataset in RAM te laden. Gebruik `--max-rows 0` alleen wanneer de machine alle rijen aankan. Open na training <http://127.0.0.1:8000>.
 
 ## Notebookvolgorde
 
@@ -87,11 +87,21 @@ Historisch en verwacht weer komt van [Open-Meteo](https://open-meteo.com/). De t
 - FLAML als reproduceerbare AutoML-vergelijking (meegeleverd in `requirements.txt`);
 - SageMaker-training met dezelfde train/testgrens.
 
-De steekproef wordt chronologisch gesplitst: de eerste 80% is ontwikkeldata en de laatste 20% is de finale hold-out. Binnen de ontwikkeldata vormt opnieuw de laatste 20% de selectievalidatie. Kandidaten worden dus nooit op de finale hold-out gekozen. Om zowel nauwkeurigheid als verklaarde variantie te verbeteren, wint binnen 0,10 minuut van de beste validatie-MAE het model met de hoogste validatie-R². Route- en stationshistoriek gebruikt uitsluitend eerder waargenomen ritten. Selectiemetrics staan in `reports/metrics.csv`, de eenmalige eindscore in `reports/final_holdout_metrics.csv` en de stabiliteit per maand in `reports/metrics_by_month.csv`. De uiteindelijke pipeline staat in `models/duration_model.joblib`; zonder dit artifact weigert de API te starten.
+De steekproef wordt chronologisch gesplitst: de eerste 80% is ontwikkeldata en de laatste 20% is de finale hold-out. Binnen de ontwikkeldata vormt opnieuw de laatste 20% de selectievalidatie. Kandidaten worden dus nooit op de finale hold-out gekozen. Om zowel nauwkeurigheid als verklaarde variantie te verbeteren, wint binnen 0,10 minuut van de beste validatie-MAE het model met de hoogste validatie-R². Route- en stationshistoriek gebruikt uitsluitend eerder waargenomen ritten. Selectiemetrics staan in `reports/metrics.csv`, de eenmalige eindscore in `reports/final_holdout_metrics.csv` en de stabiliteit per maand in `reports/metrics_by_month.csv`. De uiteindelijke pipeline staat in `models/duration_model.pkl`; zonder dit artifact weigert de API te starten.
 
-### Uitgevoerde volledige-jaar-run
+### Actuele all-years-run
 
-De lokale reproduceerbare run op januari–december 2024 leverde 44.199.909 geldige ritten op. Voor
+De hertraining van 12 oktober 2026 gebruikt 327.931.287 geldige ritten uit 44
+officiële archieven, van juni 2013 tot en met september 2026. Voor de
+modelvergelijking zijn 1.000.000 ritten deterministisch over die volledige
+tijdlijn verdeeld. `hist_gradient_boosting_absolute` is geselecteerd en behaalt
+op de aparte finale tijdshold-out (30 mei 2025–30 september 2026) een MAE van
+3,51 minuten, RMSE van 8,75 minuten en R² van 0,454. De exacte actuele waarden
+staan in `reports/` en `models/duration_model.metadata.json`.
+
+### Eerdere referentierun (alleen 2024)
+
+Deze cijfers zijn uitsluitend de eerdere referentie vóór de all-years-hertraining. De lokale run op januari–december 2024 leverde 44.199.909 geldige ritten op. Voor
 modelvergelijking werden 1.000.000 ritten gelijkmatig over het jaar geselecteerd: 640.000 voor
 selectietraining, 160.000 voor selectievalidatie en de laatste 200.000 als aparte finale tijdshold-out.
 Met geplande bestemming, geometrie, uurweer en lekvrije routehistoriek behaalde histogram gradient

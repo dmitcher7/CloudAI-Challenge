@@ -17,6 +17,7 @@ import pandas as pd
 import requests
 
 from src.config import DEFAULT_END_MONTH, DEFAULT_START_MONTH, WEATHER_PATH
+from src.data.download import list_official_archives
 
 ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
@@ -78,6 +79,9 @@ def download_hourly_weather(
     output_path: Path = WEATHER_PATH,
 ) -> pd.DataFrame:
     """Download an hourly weather table atomically for the selected months."""
+    if end_month == "latest":
+        latest = max(item["last_month"] for item in list_official_archives())
+        end_month = f"{latest[:4]}-{latest[4:]}"
     start_date = _month_start(start_month)
     end_date = _month_end(end_month)
     params = _weather_params(start_date, end_date)

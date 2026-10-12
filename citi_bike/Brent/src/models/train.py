@@ -5,10 +5,10 @@ from __future__ import annotations
 import argparse
 import gc
 import json
+import pickle
 from datetime import datetime, timezone
 from pathlib import Path
 
-import joblib
 import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
@@ -36,6 +36,7 @@ from src.config import (
     TARGET,
     WEATHER_PATH,
 )
+from src.data.sample import systematic_parquet_sample
 from src.data.weather import WEATHER_FEATURES, attach_hourly_weather
 from src.features.build import make_features
 from src.features.history import HISTORY_FEATURES, apply_history, fit_transform_history
@@ -226,7 +227,7 @@ def cap_rows_across_time(frame: pd.DataFrame, max_rows: int | None) -> pd.DataFr
 
 def train_and_compare(
     data_path: Path,
-    model_path: Path = MODEL_DIR / "duration_model.joblib",
+    model_path: Path = MODEL_DIR / "duration_model.pkl",
     metrics_path: Path = REPORT_DIR / "metrics.csv",
     max_rows: int | None = 1_000_000,
     quick: bool = False,
@@ -246,8 +247,11 @@ def train_and_compare(
     ]
     available_columns = set(pq.read_schema(data_path).names)
     columns.extend(name for name in WEATHER_FEATURES if name in available_columns)
-    frame = pd.read_parquet(data_path, columns=columns).sort_values("started_at")
-    frame = cap_rows_across_time(frame, max_rows)
+    if max_rows:
+        frame = systematic_parquet_sample(data_path, max_rows=max_rows, columns=columns)
+    else:
+        frame = pd.read_parquet(data_path, columns=columns)
+    frame = frame.sort_values("started_at")
     frame = attach_hourly_weather(frame, weather_path)
     if len(frame) < 100:
         raise ValueError("At least 100 valid rows are needed for model comparison")
@@ -359,7 +363,8 @@ def train_and_compare(
 
     model_path.parent.mkdir(parents=True, exist_ok=True)
     metrics_path.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(bundle, model_path)
+    with model_path.open("wb") as handle:
+        pickle.dump(bundle, handle, protocol=pickle.HIGHEST_PROTOCOL)
     metrics.to_csv(metrics_path, index=False)
     pd.DataFrame([final_metrics]).to_csv(
         metrics_path.with_name("final_holdout_metrics.csv"), index=False
@@ -383,7 +388,7 @@ def train_and_compare(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", type=Path, default=PROCESSED_DIR / "trips.parquet")
-    parser.add_argument("--model", type=Path, default=MODEL_DIR / "duration_model.joblib")
+    parser.add_argument("--model", type=Path, default=MODEL_DIR / "duration_model.pkl")
     parser.add_argument("--metrics", type=Path, default=REPORT_DIR / "metrics.csv")
     parser.add_argument("--weather", type=Path, default=WEATHER_PATH)
     parser.add_argument(

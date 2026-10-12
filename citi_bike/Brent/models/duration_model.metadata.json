@@ -1,5 +1,5 @@
 {
-  "model_name": "hist_gradient_boosting",
+  "model_name": "hist_gradient_boosting_absolute",
   "features": [
     "rideable_type",
     "member_casual",
@@ -33,75 +33,187 @@
     "wind_speed_10m"
   ],
   "target": "duration_minutes",
-  "trained_at_utc": "2026-10-09T11:39:22.396076+00:00",
+  "trained_at_utc": "2026-10-12T15:21:49.315841+00:00",
   "training_period": [
-    "2023-12-31 21:40:09.191000",
-    "2024-10-14 17:48:22.322000"
+    "2013-06-01 00:44:23",
+    "2025-05-30 21:35:14.173000"
   ],
   "holdout_period": [
-    "2024-10-14 17:48:33.348000",
-    "2024-12-31 23:57:46.390000"
+    "2025-05-30 21:37:35.064000",
+    "2026-09-30 23:28:17.090000"
   ],
   "metrics": {
-    "model": "hist_gradient_boosting",
-    "mae_minutes": 3.1208213025875144,
-    "rmse_minutes": 7.357651988116046,
-    "median_ae_minutes": 1.5345513426199378,
-    "r2": 0.5181062139132548,
-    "train_rows": 800000,
-    "test_rows": 200000,
-    "test_start": "2024-10-14 17:48:33.348000",
-    "test_end": "2024-12-31 23:57:46.390000"
+    "model": "hist_gradient_boosting_absolute",
+    "mae_minutes": 3.5055543102275903,
+    "rmse_minutes": 8.748169734906455,
+    "median_ae_minutes": 1.3931386729158701,
+    "r2": 0.4544783572949981,
+    "train_rows": 799832,
+    "test_rows": 199959,
+    "test_start": "2025-05-30 21:37:35.064000",
+    "test_end": "2026-09-30 23:28:17.090000"
   },
   "selection_rule": "highest validation R2 among models within 0.10 minutes of the best validation MAE",
   "selection_metrics": {
-    "model": "hist_gradient_boosting",
-    "mae_minutes": 3.6590372951997,
-    "rmse_minutes": 8.384668521389077,
-    "median_ae_minutes": 1.7478491863881436,
-    "r2": 0.4975419075902846,
-    "train_rows": 640000,
-    "test_rows": 160000,
-    "test_start": "2024-09-02 17:14:34.725000",
-    "test_end": "2024-10-14 17:48:22.322000",
+    "model": "hist_gradient_boosting_absolute",
+    "mae_minutes": 3.616921595233565,
+    "rmse_minutes": 8.819405049265907,
+    "median_ae_minutes": 1.523184029432862,
+    "r2": 0.457884161560525,
+    "train_rows": 639865,
+    "test_rows": 159967,
+    "test_start": "2024-04-05 09:34:33.218000",
+    "test_end": "2025-05-30 21:35:14.173000",
     "selected": true
   },
   "training_metrics": {
-    "mae_minutes": 3.774675564431088,
-    "rmse_minutes": 9.171111597033438,
-    "median_ae_minutes": 1.6686383062547545,
-    "r2": 0.4651246891858425
+    "mae_minutes": 4.216128263255039,
+    "rmse_minutes": 10.206536624000776,
+    "median_ae_minutes": 1.6449117865029819,
+    "r2": 0.3893275677405109
   },
   "monthly_holdout_metrics": [
     {
-      "month": "2024-10",
-      "rows": 64000,
-      "mae_minutes": 3.366530776742921,
-      "rmse_minutes": 8.154537163553785,
-      "median_ae_minutes": 1.580343628025809,
-      "r2": 0.4884630879478311
+      "month": "2025-05",
+      "rows": 500,
+      "mae_minutes": 3.600511944460236,
+      "rmse_minutes": 8.426235498069024,
+      "median_ae_minutes": 1.4715077050505272,
+      "r2": 0.4405672974267625
     },
     {
-      "month": "2024-11",
-      "rows": 83774,
-      "mae_minutes": 3.20392320055638,
-      "rmse_minutes": 7.360185819906852,
-      "median_ae_minutes": 1.613322398626444,
-      "r2": 0.5205209227610275
+      "month": "2025-06",
+      "rows": 14482,
+      "mae_minutes": 3.5785081524315103,
+      "rmse_minutes": 8.77796305336725,
+      "median_ae_minutes": 1.4735429216192224,
+      "r2": 0.46990736677366785
     },
     {
-      "month": "2024-12",
-      "rows": 52226,
-      "mae_minutes": 2.6864172749692803,
-      "rmse_minutes": 6.239149584905156,
-      "median_ae_minutes": 1.3756124434209709,
-      "r2": 0.5541666799341234
+      "month": "2025-07",
+      "rows": 15164,
+      "mae_minutes": 3.883871238644861,
+      "rmse_minutes": 9.76886079565753,
+      "median_ae_minutes": 1.4654644471000982,
+      "r2": 0.41967666343220156
+    },
+    {
+      "month": "2025-08",
+      "rows": 15584,
+      "mae_minutes": 4.153543178663281,
+      "rmse_minutes": 10.417872465931632,
+      "median_ae_minutes": 1.5278376416232051,
+      "r2": 0.4083335577919658
+    },
+    {
+      "month": "2025-09",
+      "rows": 16097,
+      "mae_minutes": 3.441163042217108,
+      "rmse_minutes": 8.279330601668239,
+      "median_ae_minutes": 1.44306481182646,
+      "r2": 0.47355366045201586
+    },
+    {
+      "month": "2025-10",
+      "rows": 14404,
+      "mae_minutes": 3.1022795016047384,
+      "rmse_minutes": 7.630494076196139,
+      "median_ae_minutes": 1.3072092723817599,
+      "r2": 0.5115412324751607
+    },
+    {
+      "month": "2025-11",
+      "rows": 10403,
+      "mae_minutes": 2.8079809349159546,
+      "rmse_minutes": 6.889768150290422,
+      "median_ae_minutes": 1.1862704067529564,
+      "r2": 0.5127549325677407
+    },
+    {
+      "month": "2025-12",
+      "rows": 6367,
+      "mae_minutes": 2.470588965314959,
+      "rmse_minutes": 5.831256411177047,
+      "median_ae_minutes": 1.084788924754915,
+      "r2": 0.5606079722339964
+    },
+    {
+      "month": "2026-01",
+      "rows": 5527,
+      "mae_minutes": 2.4727701424071906,
+      "rmse_minutes": 6.402684814007584,
+      "median_ae_minutes": 1.027125777706388,
+      "r2": 0.5141166668334953
+    },
+    {
+      "month": "2026-02",
+      "rows": 3710,
+      "mae_minutes": 2.9546559903482192,
+      "rmse_minutes": 8.15759126743818,
+      "median_ae_minutes": 1.2056366342702896,
+      "r2": 0.39203510438967093
+    },
+    {
+      "month": "2026-03",
+      "rows": 8963,
+      "mae_minutes": 3.028510276579762,
+      "rmse_minutes": 7.944368801376149,
+      "median_ae_minutes": 1.220547776635458,
+      "r2": 0.4689521029131217
+    },
+    {
+      "month": "2026-04",
+      "rows": 11751,
+      "mae_minutes": 3.3932125405535074,
+      "rmse_minutes": 8.84245369484069,
+      "median_ae_minutes": 1.3384765569697699,
+      "r2": 0.4401564605957039
+    },
+    {
+      "month": "2026-05",
+      "rows": 14289,
+      "mae_minutes": 3.470732890853191,
+      "rmse_minutes": 8.262407076581733,
+      "median_ae_minutes": 1.413505193877313,
+      "r2": 0.48359248479992367
+    },
+    {
+      "month": "2026-06",
+      "rows": 16389,
+      "mae_minutes": 3.7565905274418916,
+      "rmse_minutes": 9.03422901972462,
+      "median_ae_minutes": 1.5468385957291613,
+      "r2": 0.4489188736456715
+    },
+    {
+      "month": "2026-07",
+      "rows": 15199,
+      "mae_minutes": 3.8821766216886924,
+      "rmse_minutes": 9.837808379453584,
+      "median_ae_minutes": 1.4784537034915903,
+      "r2": 0.3949944078439054
+    },
+    {
+      "month": "2026-08",
+      "rows": 15963,
+      "mae_minutes": 3.9650832120331634,
+      "rmse_minutes": 9.724305534821367,
+      "median_ae_minutes": 1.5205776593687501,
+      "r2": 0.4194670642719249
+    },
+    {
+      "month": "2026-09",
+      "rows": 15167,
+      "mae_minutes": 3.533522726412517,
+      "rmse_minutes": 8.551682444653023,
+      "median_ae_minutes": 1.4489578393361597,
+      "r2": 0.47283992360574945
     }
   ],
   "route_history_summary": {
-    "routes": 323639,
-    "start_stations": 2298,
-    "end_stations": 2320,
+    "routes": 369760,
+    "start_stations": 4285,
+    "end_stations": 4345,
     "smoothing": 20.0
   },
   "limitations": "Destination is treated as planned input; weather is hourly and city-level. Events, traffic, route choice and bike availability are unavailable."
