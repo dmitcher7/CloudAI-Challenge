@@ -1,0 +1,21 @@
+{
+  "notebook": "07_baseline_all_data",
+  "model": "HistGradientBoosting (Poisson, standaard), alle data",
+  "params": {},
+  "cv_mae": [
+    31.079,
+    41.2178,
+    36.8022
+  ],
+  "cv_mae_mean": 36.3663,
+  "cv_poisson_deviance": [
+    16.1774,
+    19.9398,
+    15.0373
+  ],
+  "cv_fit_seconds": 19.6,
+  "test_mae": 36.0537,
+  "test_rmse": 63.8321,
+  "test_r2": 0.9022,
+  "test_poisson_deviance": 14.9121
+}

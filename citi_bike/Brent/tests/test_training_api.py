@@ -18,6 +18,10 @@ def test_training_and_prediction_roundtrip(tmp_path: Path, monkeypatch):
     assert model_path.exists()
     assert metrics["mae_minutes"].notna().all()
     assert bundle["model_name"] in set(metrics["model"])
+    assert metrics["selected"].sum() == 1
+    assert metrics.loc[metrics["selected"], "model"].iloc[0] == bundle["model_name"]
+    assert bundle["metrics"]["test_rows"] > 0
+    assert bundle["route_history_summary"]["routes"] > 0
 
     monkeypatch.setattr(web, "MODEL_PATH", model_path)
     monkeypatch.setattr(

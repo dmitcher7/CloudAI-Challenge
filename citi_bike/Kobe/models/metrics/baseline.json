@@ -1,0 +1,20 @@
+{
+  "notebook": "07_baseline_all_data",
+  "model": "Baseline: zone x uur x weekend, laatste 12 maanden",
+  "cv_mae": [
+    47.9278,
+    61.246,
+    63.6354
+  ],
+  "cv_mae_mean": 57.6031,
+  "cv_poisson_deviance": [
+    30.6825,
+    40.9817,
+    35.6484
+  ],
+  "cv_fit_seconds": 0.4,
+  "test_mae": 70.964,
+  "test_rmse": 115.4286,
+  "test_r2": 0.6802,
+  "test_poisson_deviance": 47.6182
+}

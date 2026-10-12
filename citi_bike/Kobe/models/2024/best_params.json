@@ -1,0 +1,10 @@
+{
+  "source": "05e_hist_gradient_boosting_2024 (randomized search, 25 x 5 folds)",
+  "params": {
+    "l2_regularization": 0.015314,
+    "learning_rate": 0.03129,
+    "max_iter": 1056,
+    "max_leaf_nodes": 85,
+    "min_samples_leaf": 18
+  }
+}

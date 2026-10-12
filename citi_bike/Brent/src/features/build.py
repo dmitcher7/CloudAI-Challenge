@@ -8,6 +8,7 @@ from pandas.tseries.holiday import USFederalHolidayCalendar
 
 from src.config import MODEL_FEATURES
 from src.data.weather import WEATHER_FEATURES
+from src.features.history import HISTORY_FEATURES
 
 
 def make_features(frame: pd.DataFrame) -> pd.DataFrame:
@@ -48,10 +49,21 @@ def make_features(frame: pd.DataFrame) -> pd.DataFrame:
     result["delta_lng"] = pd.to_numeric(result["end_lng"], errors="coerce") - pd.to_numeric(
         result["start_lng"], errors="coerce"
     )
+    north_km = result["delta_lat"] * 111.0
+    east_km = result["delta_lng"] * 84.0
+    grid_angle = np.radians(29.0)
+    grid_x = east_km * np.cos(grid_angle) + north_km * np.sin(grid_angle)
+    grid_y = -east_km * np.sin(grid_angle) + north_km * np.cos(grid_angle)
+    result["grid_distance_km"] = grid_x.abs() + grid_y.abs()
+    bearing = np.arctan2(east_km, north_km)
+    result["bearing_sin"] = np.sin(bearing)
+    result["bearing_cos"] = np.cos(bearing)
 
     for column in ["rideable_type", "member_casual", "start_station_id", "end_station_id"]:
         result[column] = result[column].astype("string").fillna("unknown")
-    for column in ["start_lat", "start_lng", "end_lat", "end_lng", *WEATHER_FEATURES]:
+    for column in [
+        "start_lat", "start_lng", "end_lat", "end_lng", *WEATHER_FEATURES, *HISTORY_FEATURES
+    ]:
         if column not in result:
             result[column] = np.nan
         result[column] = pd.to_numeric(result[column], errors="coerce")

@@ -1,4 +1,4 @@
-"""Controleert of app.py + beide modellen (.pkl) correct werken, voordat ze naar de VM gaan.
+"""Controleert of app.py + alle modellen (.pkl) correct werken, voordat ze naar de VM gaan.
 
 Gebruik:  python check_model.py [map met app.py]   (standaard: de map van dit script)
 Wordt uitgevoerd door .github/workflows/deploy-api.yml.
@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 app_dir = Path(sys.argv[1] if len(sys.argv) > 1 else Path(__file__).parent).resolve()
 sys.path.insert(0, str(app_dir))
 
-import app as api  # laadt beide modellen; faalt als een .pkl-bestand kapot of incompatibel is
+import app as api  # laadt alle modellen; faalt als een .pkl-bestand kapot of incompatibel is
 
 client = TestClient(api.app)
 
@@ -25,7 +25,7 @@ def check(name, condition, detail=""):
 r = client.get("/health")
 check("/health", r.status_code == 200 and r.json().get("status") == "ok", r.text)
 
-for page in ["/", "/mushrooms.html", "/citi_bike.html"]:
+for page in ["/", "/mushrooms.html", "/citi_bike_models.html", "/citi_bike.html", "/citi_bike_demand.html"]:
     r = client.get(page)
     check(f"pagina {page}", r.status_code == 200 and "text/html" in r.headers["content-type"], r.status_code)
 
@@ -72,5 +72,34 @@ for variant in [{}, {"rideable_type": "electric_bike", "member_casual": "casual"
 
 r = client.post("/citi_bike/predict", json=dict(trip, member_casual="iemand"))
 check("citi_bike: ongeldige waarde geeft 422", r.status_code == 422, r.status_code)
+
+# --- Citi Bike-vraag (vertrekken per zone per uur) ---
+r = client.get("/citi_bike_demand/")
+info = r.json()
+check("/citi_bike_demand/ geeft model-info", r.status_code == 200 and info.get("features") and info.get("zones"),
+      f"{info.get('model')} uit {info.get('model_file')}, {len(info.get('zones', []))} zones")
+
+hour = {"zone": 0, "time": "2024-06-11T08:00:00", "temperature_c": 20, "precipitation_mm": 0, "wind_kmh": 10}
+for zone in info["zones"]:
+    r = client.post("/citi_bike_demand/predict", json=dict(hour, zone=zone["zone"]))
+    trips = r.json().get("predicted_trips") if r.status_code == 200 else None
+    if not (isinstance(trips, (int, float)) and 0 <= trips < 5000):
+        check(f"/citi_bike_demand/predict zone {zone['zone']}", False, r.text)
+check("/citi_bike_demand/predict voor elke zone", True)
+
+# Plausibiliteit: drukste zone, dinsdag 8u droog moet drukker zijn dan zondag 4u of in de stortregen.
+busy = client.post("/citi_bike_demand/predict", json=hour).json()["predicted_trips"]
+night = client.post("/citi_bike_demand/predict", json=dict(hour, time="2024-06-09T04:00:00")).json()["predicted_trips"]
+storm = client.post("/citi_bike_demand/predict", json=dict(hour, precipitation_mm=8)).json()["predicted_trips"]
+check("citi_bike_demand: spits > nacht en > stortregen", busy > night and busy > storm, f"{busy} / {night} / {storm}")
+
+day = {"zone": 0, "date": "2024-06-11", "weather": [{"temperature_c": 20, "precipitation_mm": 0, "wind_kmh": 10}] * 24}
+r = client.post("/citi_bike_demand/predict_day", json=day)
+check("/citi_bike_demand/predict_day geeft 24 uren", r.status_code == 200 and len(r.json()["hourly_trips"]) == 24, r.text[:200])
+
+r = client.post("/citi_bike_demand/predict", json=dict(hour, zone=999))
+check("citi_bike_demand: onbekende zone geeft 422", r.status_code == 422, r.status_code)
+r = client.post("/citi_bike_demand/predict", json=dict(hour, precipitation_mm=-1))
+check("citi_bike_demand: negatieve neerslag geeft 422", r.status_code == 422, r.status_code)
 
 print("Modellen en API werken.")

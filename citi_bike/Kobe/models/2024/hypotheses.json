@@ -1,0 +1,27 @@
+{
+  "H1_rain": {
+    "wilcoxon_W": 451.0,
+    "wilcoxon_p": 4.840479907326398e-54,
+    "strata": 328,
+    "median_ratio_wet_dry": 0.5347819704665828,
+    "glm_factor": 0.7309406014398706,
+    "glm_ci95": [
+      0.6766030568373987,
+      0.7896419583597545
+    ],
+    "glm_p_one_sided": 9.150908546126489e-16
+  },
+  "H2_daily_rhythm": {
+    "chi2": 1783818.1566891335,
+    "dof": 23,
+    "p": 0.0,
+    "cramers_v": 0.20073405999659402,
+    "morning_share_weekday": 0.17922504930870387,
+    "morning_share_weekend": 0.08260648707333362,
+    "mannwhitney_p": 2.826668721183223e-45
+  },
+  "deviance_explained": {
+    "uur x daltype + maand": 0.8909491378123052,
+    "+ weer": 0.9251767095732537
+  }
+}

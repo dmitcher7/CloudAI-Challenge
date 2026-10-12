@@ -1,0 +1,15 @@
+{
+  "model": "HistGradientBoosting (Poisson)",
+  "params": {
+    "l2_regularization": 0.015314,
+    "learning_rate": 0.03129,
+    "max_iter": 1056,
+    "max_leaf_nodes": 85,
+    "min_samples_leaf": 18
+  },
+  "mae": 29.0454,
+  "rmse": 56.3468,
+  "r2": 0.9056,
+  "poisson_deviance": 12.5921,
+  "trained_at_utc": "2026-10-09T12:05:31+00:00"
+}

@@ -1,0 +1,10 @@
+{
+  "source": "08_hgb_all_data (opnieuw getuned, backtest 3 folds)",
+  "params": {
+    "l2_regularization": 0.004809,
+    "learning_rate": 0.022801,
+    "max_iter": 887,
+    "max_leaf_nodes": 151,
+    "min_samples_leaf": 335
+  }
+}

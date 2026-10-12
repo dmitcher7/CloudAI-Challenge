@@ -10,6 +10,7 @@ import pandas as pd
 
 from src.config import MAX_DURATION_MINUTES
 from src.features.build import make_features
+from src.features.history import apply_history
 
 
 def load_bundle(path: Path) -> dict:
@@ -20,6 +21,11 @@ def load_bundle(path: Path) -> dict:
     return bundle
 
 
+def features_for_bundle(bundle: dict, frame: pd.DataFrame) -> pd.DataFrame:
+    enriched = apply_history(frame, bundle.get("route_history"))
+    return make_features(enriched)
+
+
 def predict_rows(bundle: dict, frame: pd.DataFrame) -> np.ndarray:
-    features = make_features(frame)
+    features = features_for_bundle(bundle, frame)
     return np.clip(bundle["model"].predict(features), 0, MAX_DURATION_MINUTES)

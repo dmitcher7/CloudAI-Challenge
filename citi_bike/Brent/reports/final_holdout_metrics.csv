@@ -1,0 +1,2 @@
+model,mae_minutes,rmse_minutes,median_ae_minutes,r2,train_rows,test_rows,test_start,test_end
+hist_gradient_boosting,3.1208213025875144,7.357651988116046,1.5345513426199378,0.5181062139132548,800000,200000,2024-10-14 17:48:33.348000,2024-12-31 23:57:46.390000

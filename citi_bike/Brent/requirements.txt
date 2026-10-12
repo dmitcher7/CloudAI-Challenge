@@ -16,3 +16,4 @@ nbformat==5.10.4
 pytest==8.3.4
 httpx==0.28.1
 flaml[automl]==2.3.3
+catboost==1.2.10

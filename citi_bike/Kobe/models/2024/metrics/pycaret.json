@@ -1,0 +1,95 @@
+{
+  "notebook": "05b_pycaret",
+  "model": "PyCaret: ExtraTreesRegressor (getuned)",
+  "leaderboard": [
+    {
+      "Model": "Extra Trees Regressor",
+      "MAE": 26.957,
+      "RMSE": 48.629,
+      "R2": 0.9317,
+      "TT (Sec)": 3.772
+    },
+    {
+      "Model": "Random Forest Regressor",
+      "MAE": 28.1429,
+      "RMSE": 51.5001,
+      "R2": 0.9235,
+      "TT (Sec)": 5.508
+    },
+    {
+      "Model": "Light Gradient Boosting Machine",
+      "MAE": 30.7167,
+      "RMSE": 51.219,
+      "R2": 0.9257,
+      "TT (Sec)": 0.666
+    },
+    {
+      "Model": "Extreme Gradient Boosting",
+      "MAE": 31.1993,
+      "RMSE": 52.856,
+      "R2": 0.9201,
+      "TT (Sec)": 0.21
+    },
+    {
+      "Model": "Decision Tree Regressor",
+      "MAE": 36.2355,
+      "RMSE": 66.2374,
+      "R2": 0.8746,
+      "TT (Sec)": 0.348
+    },
+    {
+      "Model": "Gradient Boosting Regressor",
+      "MAE": 47.0773,
+      "RMSE": 78.1124,
+      "R2": 0.8288,
+      "TT (Sec)": 3.572
+    },
+    {
+      "Model": "Huber Regressor",
+      "MAE": 93.4384,
+      "RMSE": 142.6795,
+      "R2": 0.4302,
+      "TT (Sec)": 1.03
+    },
+    {
+      "Model": "Lasso Regression",
+      "MAE": 97.0771,
+      "RMSE": 138.5602,
+      "R2": 0.462,
+      "TT (Sec)": 0.12
+    },
+    {
+      "Model": "Elastic Net",
+      "MAE": 97.093,
+      "RMSE": 138.7535,
+      "R2": 0.4604,
+      "TT (Sec)": 0.112
+    },
+    {
+      "Model": "Bayesian Ridge",
+      "MAE": 97.2238,
+      "RMSE": 138.517,
+      "R2": 0.4623,
+      "TT (Sec)": 0.092
+    }
+  ],
+  "tuning": [
+    {
+      "model": "ExtraTreesRegressor",
+      "cv_mae_getuned": 26.6368
+    },
+    {
+      "model": "RandomForestRegressor",
+      "cv_mae_getuned": 27.5106
+    },
+    {
+      "model": "LGBMRegressor",
+      "cv_mae_getuned": 29.3975
+    }
+  ],
+  "cv_mae_mean": 26.6368,
+  "test_mae": 30.5775,
+  "test_rmse": 59.9382,
+  "test_r2": 0.8932,
+  "test_poisson_deviance": 14.5678
+}

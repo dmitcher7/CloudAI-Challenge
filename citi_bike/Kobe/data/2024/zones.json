@@ -1,0 +1,242 @@
+[
+  {
+    "zone": 0,
+    "name": "rond W 21 St & 6 Ave",
+    "n_stations": 51,
+    "trips": 3109617,
+    "lat": 40.74158,
+    "lng": -73.99914
+  },
+  {
+    "zone": 1,
+    "name": "rond University Pl & E 14 St",
+    "n_stations": 53,
+    "trips": 3071486,
+    "lat": 40.73044,
+    "lng": -73.9835
+  },
+  {
+    "zone": 2,
+    "name": "rond E 33 St & 1 Ave",
+    "n_stations": 48,
+    "trips": 2745216,
+    "lat": 40.7478,
+    "lng": -73.97899
+  },
+  {
+    "zone": 3,
+    "name": "rond Canal St & Rutgers St",
+    "n_stations": 55,
+    "trips": 2590015,
+    "lat": 40.71775,
+    "lng": -73.98936
+  },
+  {
+    "zone": 4,
+    "name": "rond Broadway & W 58 St",
+    "n_stations": 44,
+    "trips": 2543290,
+    "lat": 40.7648,
+    "lng": -73.9845
+  },
+  {
+    "zone": 5,
+    "name": "rond 8 Ave & W 31 St",
+    "n_stations": 37,
+    "trips": 2412386,
+    "lat": 40.75478,
+    "lng": -73.99538
+  },
+  {
+    "zone": 6,
+    "name": "rond Cleveland Pl & Spring St",
+    "n_stations": 43,
+    "trips": 2326064,
+    "lat": 40.72753,
+    "lng": -74.00242
+  },
+  {
+    "zone": 7,
+    "name": "rond West St & Chambers St",
+    "n_stations": 53,
+    "trips": 1961273,
+    "lat": 40.71068,
+    "lng": -74.00966
+  },
+  {
+    "zone": 8,
+    "name": "rond W 100 St & Broadway",
+    "n_stations": 89,
+    "trips": 1801415,
+    "lat": 40.80346,
+    "lng": -73.94748
+  },
+  {
+    "zone": 9,
+    "name": "rond Hanson Pl & Ashland Pl",
+    "n_stations": 64,
+    "trips": 1782047,
+    "lat": 40.69553,
+    "lng": -73.98345
+  },
+  {
+    "zone": 10,
+    "name": "rond E 72 St & York Ave",
+    "n_stations": 44,
+    "trips": 1746369,
+    "lat": 40.76282,
+    "lng": -73.96466
+  },
+  {
+    "zone": 11,
+    "name": "rond Bergen St & Vanderbilt Ave",
+    "n_stations": 66,
+    "trips": 1702606,
+    "lat": 40.68078,
+    "lng": -73.96334
+  },
+  {
+    "zone": 12,
+    "name": "rond Metropolitan Ave & Bedford Ave",
+    "n_stations": 45,
+    "trips": 1676417,
+    "lat": 40.71173,
+    "lng": -73.95757
+  },
+  {
+    "zone": 13,
+    "name": "rond Columbus Ave & W 72 St",
+    "n_stations": 32,
+    "trips": 1625572,
+    "lat": 40.78465,
+    "lng": -73.97618
+  },
+  {
+    "zone": 14,
+    "name": "rond E 85 St & 3 Ave",
+    "n_stations": 43,
+    "trips": 1389640,
+    "lat": 40.78057,
+    "lng": -73.95172
+  },
+  {
+    "zone": 15,
+    "name": "rond Bedford Ave & Nassau Ave",
+    "n_stations": 49,
+    "trips": 1271063,
+    "lat": 40.72336,
+    "lng": -73.94846
+  },
+  {
+    "zone": 16,
+    "name": "rond West Drive & Prospect Park West",
+    "n_stations": 49,
+    "trips": 1051313,
+    "lat": 40.66798,
+    "lng": -73.98524
+  },
+  {
+    "zone": 17,
+    "name": "rond 31 St & Broadway",
+    "n_stations": 89,
+    "trips": 1017529,
+    "lat": 40.77032,
+    "lng": -73.91753
+  },
+  {
+    "zone": 18,
+    "name": "rond Montrose Ave & Bushwick Ave",
+    "n_stations": 69,
+    "trips": 1002457,
+    "lat": 40.6974,
+    "lng": -73.93748
+  },
+  {
+    "zone": 19,
+    "name": "rond Court St & State St",
+    "n_stations": 54,
+    "trips": 923204,
+    "lat": 40.68154,
+    "lng": -74.00028
+  },
+  {
+    "zone": 20,
+    "name": "rond Wyckoff Ave & Gates Ave",
+    "n_stations": 118,
+    "trips": 818043,
+    "lat": 40.70258,
+    "lng": -73.90861
+  },
+  {
+    "zone": 21,
+    "name": "rond E 161 St & River Ave",
+    "n_stations": 97,
+    "trips": 779897,
+    "lat": 40.82944,
+    "lng": -73.9394
+  },
+  {
+    "zone": 22,
+    "name": "rond Eastern Pkwy & Kingston Ave",
+    "n_stations": 104,
+    "trips": 768126,
+    "lat": 40.67325,
+    "lng": -73.93148
+  },
+  {
+    "zone": 23,
+    "name": "rond Franklin St & Dupont St",
+    "n_stations": 47,
+    "trips": 749772,
+    "lat": 40.74561,
+    "lng": -73.94625
+  },
+  {
+    "zone": 24,
+    "name": "rond Melrose Ave & E 150 St",
+    "n_stations": 143,
+    "trips": 743247,
+    "lat": 40.82435,
+    "lng": -73.90671
+  },
+  {
+    "zone": 25,
+    "name": "rond Parkside Ave & Ocean Ave",
+    "n_stations": 100,
+    "trips": 676857,
+    "lat": 40.65185,
+    "lng": -73.95775
+  },
+  {
+    "zone": 26,
+    "name": "rond E Fordham Rd & Webster Ave",
+    "n_stations": 203,
+    "trips": 630886,
+    "lat": 40.86074,
+    "lng": -73.90365
+  },
+  {
+    "zone": 27,
+    "name": "rond 36 Ave & 31 St",
+    "n_stations": 95,
+    "trips": 614954,
+    "lat": 40.74614,
+    "lng": -73.91459
+  },
+  {
+    "zone": 28,
+    "name": "rond 75 St & Roosevelt Ave",
+    "n_stations": 164,
+    "trips": 525558,
+    "lat": 40.75108,
+    "lng": -73.8748
+  },
+  {
+    "zone": 29,
+    "name": "rond 36 St & 4 Ave",
+    "n_stations": 62,
+    "trips": 213981,
+    "lat": 40.64674,
+    "lng": -74.01117
+  }
+]

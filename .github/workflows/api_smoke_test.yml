@@ -24,7 +24,7 @@ jobs:
 
       - name: Webpagina's
         run: |
-          for page in / /mushrooms.html /citi_bike.html; do
+          for page in / /mushrooms.html /citi_bike_models.html /citi_bike.html /citi_bike_demand.html; do
             curl -sf -m 15 -o /dev/null -w "$page -> %{http_code}\n" "$API_URL$page"
           done
 
@@ -34,6 +34,8 @@ jobs:
           jq -e '.categorical_features | length > 0' info.json
           curl -sf -m 15 "$API_URL/citi_bike/" | tee citi_info.json
           jq -e '.features | length > 0' citi_info.json
+          curl -sf -m 15 "$API_URL/citi_bike_demand/" | tee demand_info.json
+          jq -e '(.features | length > 0) and (.zones | length > 0)' demand_info.json
 
       - name: Predict example mushroom
         env:
@@ -72,6 +74,22 @@ jobs:
             }' | tee citi_predict.json
           jq -e '.predicted_duration_minutes >= 0' citi_predict.json
 
+      - name: Predict example Citi Bike demand
+        env:
+          API_KEY: ${{ secrets.MUSHROOM_API_KEY }}
+        run: |
+          curl -sf -m 15 -X POST "$API_URL/citi_bike_demand/predict" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: $API_KEY" \
+            -d '{
+              "zone": 0,
+              "time": "2024-06-11T08:00:00",
+              "temperature_c": 20,
+              "precipitation_mm": 0,
+              "wind_kmh": 10
+            }' | tee demand_predict.json
+          jq -e '.predicted_trips >= 0' demand_predict.json
+
       - name: Invalid input is rejected
         run: |
           status=$(curl -s -o /dev/null -w '%{http_code}' -m 15 -X POST "$API_URL/mushrooms/predict" \
@@ -81,4 +99,8 @@ jobs:
           status=$(curl -s -o /dev/null -w '%{http_code}' -m 15 -X POST "$API_URL/citi_bike/predict" \
             -H "Content-Type: application/json" -d '{"member_casual": "iemand"}')
           echo "citi_bike: HTTP $status"
+          test "$status" = "422"
+          status=$(curl -s -o /dev/null -w '%{http_code}' -m 15 -X POST "$API_URL/citi_bike_demand/predict" \
+            -H "Content-Type: application/json" -d '{"zone": 0, "time": "geen-datum"}')
+          echo "citi_bike_demand: HTTP $status"
           test "$status" = "422"
