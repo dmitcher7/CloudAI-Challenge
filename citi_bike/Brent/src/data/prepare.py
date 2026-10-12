@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from zipfile import ZipFile
@@ -25,7 +27,9 @@ from src.config import (
 
 COLUMN_ALIASES = {
     "starttime": "started_at",
+    "start_time": "started_at",
     "stoptime": "ended_at",
+    "stop_time": "ended_at",
     "start_station_name": "start_station_name",
     "start_station_id": "start_station_id",
     "start_station_latitude": "start_lat",
@@ -35,6 +39,7 @@ COLUMN_ALIASES = {
     "end_station_latitude": "end_lat",
     "end_station_longitude": "end_lng",
     "usertype": "member_casual",
+    "user_type": "member_casual",
 }
 
 OUTPUT_COLUMNS = [
@@ -61,7 +66,9 @@ def canonical_name(name: str) -> str:
     return COLUMN_ALIASES.get(name, name)
 
 
-def normalize_chunk(frame: pd.DataFrame, source_month: str) -> tuple[pd.DataFrame, dict]:
+def normalize_chunk(
+    frame: pd.DataFrame, source_month: str, row_id_prefix: str | None = None
+) -> tuple[pd.DataFrame, dict]:
     """Normalize schema and filter technically invalid rows; return audit counts."""
     frame = frame.rename(columns={column: canonical_name(column) for column in frame.columns})
     before = len(frame)
@@ -80,9 +87,12 @@ def normalize_chunk(frame: pd.DataFrame, source_month: str) -> tuple[pd.DataFram
 
     computed_duration = (frame["ended_at"] - frame["started_at"]).dt.total_seconds() / 60
     frame["duration_minutes"] = computed_duration
+    actual_source_month = frame["started_at"].dt.strftime("%Y%m").astype("string")
+    actual_source_month = actual_source_month.fillna(source_month)
     if "ride_id" not in frame:
         # Stable within a source file; legacy rows do not have official ride IDs.
-        frame["ride_id"] = source_month + "-legacy-" + frame.index.astype(str)
+        prefix = row_id_prefix or source_month
+        frame["ride_id"] = prefix + "-legacy-" + frame.index.astype(str)
     if "rideable_type" not in frame:
         frame["rideable_type"] = "unknown"
 
@@ -109,7 +119,7 @@ def normalize_chunk(frame: pd.DataFrame, source_month: str) -> tuple[pd.DataFram
     kept = valid_time & valid_geo & valid_user & valid_start
 
     frame = frame.loc[kept].copy()
-    frame["source_month"] = source_month
+    frame["source_month"] = actual_source_month.loc[frame.index]
     frame = frame.drop_duplicates(subset=["ride_id"], keep="first")
 
     audit = {
@@ -124,11 +134,79 @@ def normalize_chunk(frame: pd.DataFrame, source_month: str) -> tuple[pd.DataFram
     return frame[OUTPUT_COLUMNS], audit
 
 
+def _selected_csv_names(archive: ZipFile) -> list[str]:
+    members = [
+        member
+        for member in archive.namelist()
+        if member.lower().endswith(".csv") and not member.startswith("__MACOSX")
+    ]
+    if not members:
+        return []
+    # The repackaged 2013 bundle contains a complete shallow CSV and duplicate
+    # split copies in deeper month folders. Keep the shallowest set per month;
+    # later bundles that only contain split parts retain every part.
+    depths_by_month: dict[str, int] = {}
+    for member in members:
+        match = re.search(r"(?<!\d)(20\d{2})[-_ ]?(0[1-9]|1[0-2])(?!\d)", member)
+        month = "".join(match.groups()) if match else member
+        depths_by_month[month] = min(depths_by_month.get(month, 10**6), member.count("/"))
+    shallowest_by_month: dict[str, list[str]] = {}
+    for member in members:
+        match = re.search(r"(?<!\d)(20\d{2})[-_ ]?(0[1-9]|1[0-2])(?!\d)", member)
+        month = "".join(match.groups()) if match else member
+        if member.count("/") == depths_by_month[month]:
+            shallowest_by_month.setdefault(month, []).append(member)
+
+    selected: set[str] = set()
+    for month_members in shallowest_by_month.values():
+        # Some repackaged years contain both one complete month CSV and
+        # numbered split copies at the same folder depth. Prefer the complete
+        # file in that case; otherwise retain every numbered part.
+        complete = [
+            member
+            for member in month_members
+            if not re.search(r"_\d+\.csv$", member, flags=re.IGNORECASE)
+        ]
+        selected.update(complete or month_members)
+    return [member for member in members if member in selected]
+
+
+def _csv_members_from_archive(archive: ZipFile):
+    members = _selected_csv_names(archive)
+    if members:
+        for member in members:
+            yield archive, member
+        return
+
+    nested_zips = [
+        name
+        for name in archive.namelist()
+        if name.lower().endswith(".zip") and not name.startswith("__MACOSX")
+    ]
+    for nested_name in nested_zips:
+        # ZipExtFile is not reliably seekable enough for another ZipFile. Spool
+        # one compressed month at a time and spill large members to temp storage.
+        with archive.open(nested_name) as source:
+            with tempfile.SpooledTemporaryFile(max_size=32 * 1024 * 1024) as nested_file:
+                shutil.copyfileobj(source, nested_file, length=1024 * 1024)
+                nested_file.seek(0)
+                with ZipFile(nested_file) as nested_archive:
+                    yield from _csv_members_from_archive(nested_archive)
+
+
 def csv_members(zip_path: Path):
+    """Yield CSV members from direct and nested official archive layouts."""
     with ZipFile(zip_path) as archive:
-        for member in archive.namelist():
-            if member.lower().endswith(".csv") and not member.startswith("__MACOSX"):
-                yield archive, member
+        yield from _csv_members_from_archive(archive)
+
+
+def source_period(archive_path: Path, member: str) -> str:
+    """Infer YYYYMM from a member name, falling back to its archive period."""
+    match = re.search(r"(?<!\d)(20\d{2})[-_ ]?(0[1-9]|1[0-2])(?!\d)", member)
+    if match:
+        return "".join(match.groups())
+    archive_period = archive_path.name.split("-", maxsplit=1)[0]
+    return archive_period
 
 
 def prepare_archives(
@@ -150,12 +228,17 @@ def prepare_archives(
 
     try:
         for archive_path in archives:
-            source_month = archive_path.name[:6]
             for archive, member in csv_members(archive_path):
+                source_month = source_period(archive_path, member)
                 print(f"Processing {archive_path.name}:{member}", flush=True)
                 with archive.open(member) as csv_handle:
                     for chunk in pd.read_csv(csv_handle, chunksize=chunksize, low_memory=False):
-                        cleaned, audit = normalize_chunk(chunk, source_month)
+                        member_id = re.sub(r"[^a-zA-Z0-9]+", "-", member).strip("-")
+                        cleaned, audit = normalize_chunk(
+                            chunk,
+                            source_month,
+                            row_id_prefix=f"{archive_path.stem}-{member_id}",
+                        )
                         audits.append(audit)
                         if cleaned.empty:
                             continue

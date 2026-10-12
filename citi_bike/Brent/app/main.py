@@ -17,7 +17,7 @@ from src.config import MODEL_DIR
 from src.data.weather import WEATHER_FEATURES, forecast_weather_at
 from src.models.predict import load_bundle, predict_rows
 
-MODEL_PATH = Path(os.getenv("MODEL_PATH", str(MODEL_DIR / "duration_model.joblib")))
+MODEL_PATH = Path(os.getenv("MODEL_PATH", str(MODEL_DIR / "duration_model.pkl")))
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 app = FastAPI(

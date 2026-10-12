@@ -21,7 +21,7 @@ def main() -> None:
         raise FileNotFoundError(f"No Parquet input in {train_dir}")
     train_and_compare(
         data_candidates[0],
-        model_path=model_dir / "duration_model.joblib",
+        model_path=model_dir / "duration_model.pkl",
         metrics_path=model_dir / "metrics.csv",
         max_rows=args.max_rows,
         weather_path=weather_candidates[0] if weather_candidates else train_dir / "missing-weather.parquet",

@@ -9,7 +9,7 @@ from src.models.train import train_and_compare
 
 def test_training_and_prediction_roundtrip(tmp_path: Path, monkeypatch):
     data_path = tmp_path / "demo.parquet"
-    model_path = tmp_path / "model.joblib"
+    model_path = tmp_path / "model.pkl"
     metrics_path = tmp_path / "metrics.csv"
     make_demo_data(data_path, rows=400)
     bundle, metrics = train_and_compare(

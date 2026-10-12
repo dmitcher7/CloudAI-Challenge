@@ -13,11 +13,11 @@ on:
       start_month:
         description: "First official month (YYYY-MM)"
         required: false
-        default: "2024-01"
+        default: "2013-06"
       end_month:
-        description: "Last official month (YYYY-MM)"
+        description: "Last official month (YYYY-MM or latest)"
         required: false
-        default: "2024-12"
+        default: "latest"
 
 jobs:
   validate-and-train:
@@ -47,7 +47,7 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || !inputs.official_data }}
         run: python -m src.models.train --quick --max-rows 100000
 
-      - name: Train official full-year model
+      - name: Train official all-years model
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.official_data }}
         run: python -m src.models.train --max-rows 500000
       - name: Verify API imports
@@ -56,7 +56,7 @@ jobs:
         with:
           name: duration-model-${{ github.sha }}
           path: |
-            models/duration_model.joblib
+            models/duration_model.pkl
             models/duration_model.metadata.json
             reports/metrics.csv
           retention-days: 30

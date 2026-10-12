@@ -6,5 +6,4 @@ services:
     volumes:
       - ./models:/app/models:ro
     environment:
-      MODEL_PATH: /app/models/duration_model.joblib
-
+      MODEL_PATH: /app/models/duration_model.pkl

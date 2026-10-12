@@ -15,9 +15,10 @@ RANDOM_STATE = 42
 MIN_DURATION_MINUTES = 1.0
 MAX_DURATION_MINUTES = 180.0
 
-# Use one complete calendar year by default so seasonality is represented.
-DEFAULT_START_MONTH = "2024-01"
-DEFAULT_END_MONTH = "2024-12"
+# Citi Bike started publishing trip histories in June 2013. ``latest`` is
+# resolved against the official S3 inventory by the downloader.
+DEFAULT_START_MONTH = "2013-06"
+DEFAULT_END_MONTH = "latest"
 
 RAW_COLUMNS = [
     "ride_id",

@@ -89,9 +89,9 @@ NOTEBOOKS = {
                 """
                 ## Keuze van periode
 
-                De standaardrun gebruikt het volledige kalenderjaar 2024, zodat alle seizoenen in de
-                analyse voorkomen. De periode is centraal vastgelegd, zodat scripts en notebooks
-                dezelfde grenzen gebruiken en cherry-picking achteraf wordt voorkomen.
+                De standaardrun gebruikt de volledige gepubliceerde historie vanaf juni 2013. De
+                downloader ontdekt de nieuwste officiële publicatie automatisch. Zo worden alle
+                jaren en seizoenen gebruikt zonder jaarlijks een einddatum in de code te wijzigen.
                 """
             ),
             code(
@@ -164,12 +164,11 @@ NOTEBOOKS = {
                 import matplotlib.pyplot as plt
                 import seaborn as sns
                 from src.config import PROCESSED_DIR
+                from src.data.sample import systematic_parquet_sample
 
                 sns.set_theme(style="whitegrid")
                 path = PROCESSED_DIR / "trips.parquet"
-                trips = pd.read_parquet(path).sort_values("started_at")
-                if len(trips) > 1_000_000:
-                    trips = trips.iloc[np.linspace(0, len(trips)-1, 1_000_000, dtype=int)].copy()
+                trips = systematic_parquet_sample(path, max_rows=1_000_000).sort_values("started_at")
                 print(f"EDA-steekproef: {len(trips):,} ritten, {trips.started_at.min()} t/m {trips.started_at.max()}")
                 display(trips.head())
                 """
@@ -281,8 +280,12 @@ NOTEBOOKS = {
             md("## Acceptatiechecks\n\nDeze invarianten voorkomen dat schemawijzigingen stilletjes verkeerde trainingsdata opleveren."),
             code(
                 """
-                data = pd.read_parquet(OUTPUT)
-                assert len(data) == summary["output_rows"]
+                import pyarrow.parquet as pq
+                from src.data.sample import systematic_parquet_sample
+
+                stored_rows = pq.ParquetFile(OUTPUT).metadata.num_rows
+                data = systematic_parquet_sample(OUTPUT, max_rows=1_000_000)
+                assert stored_rows == summary["output_rows"]
                 assert data.ride_id.is_unique
                 assert data.duration_minutes.between(1, 180).all()
                 assert data.member_casual.isin(["member", "casual"]).all()
@@ -321,8 +324,12 @@ NOTEBOOKS = {
                 import seaborn as sns
                 from src.analysis.hypothesis import test_member_difference
                 from src.config import PROCESSED_DIR, REPORT_DIR
+                from src.data.sample import systematic_parquet_sample
 
-                trips = pd.read_parquet(PROCESSED_DIR / "trips.parquet", columns=["member_casual", "duration_minutes"])
+                trips = systematic_parquet_sample(
+                    PROCESSED_DIR / "trips.parquet", max_rows=1_000_000,
+                    columns=["member_casual", "duration_minutes"],
+                )
                 result = test_member_difference(trips)
                 print(json.dumps(result, indent=2))
                 REPORT_DIR.mkdir(exist_ok=True)
@@ -375,7 +382,7 @@ NOTEBOOKS = {
 
                 bundle, metrics = train_and_compare(
                     PROCESSED_DIR / "trips.parquet",
-                    MODEL_DIR / "duration_model.joblib",
+                    MODEL_DIR / "duration_model.pkl",
                     REPORT_DIR / "metrics.csv",
                     max_rows=1_000_000,
                     quick=False,
@@ -417,12 +424,13 @@ NOTEBOOKS = {
             md("## Scorekaart\n\nEen model moet de mediaanbaseline merkbaar verslaan en acceptabele staartfouten hebben."),
             code(
                 """
-                import joblib
+                import pickle
                 import numpy as np
                 import pandas as pd
                 import matplotlib.pyplot as plt
                 import seaborn as sns
                 from src.config import MODEL_DIR, PROCESSED_DIR, REPORT_DIR, TARGET, WEATHER_PATH
+                from src.data.sample import systematic_parquet_sample
                 from src.data.weather import attach_hourly_weather
                 from src.models.predict import predict_rows
                 from src.models.train import temporal_split
@@ -437,14 +445,14 @@ NOTEBOOKS = {
             md("## Residuen van het geselecteerde model\n\nWe reconstrueren exact dezelfde chronologische hold-outset en bewaren de grootste fouten voor bespreking."),
             code(
                 """
-                bundle = joblib.load(MODEL_DIR / "duration_model.joblib")
+                bundle = pickle.loads((MODEL_DIR / "duration_model.pkl").read_bytes())
                 columns = [
                     "started_at", "rideable_type", "member_casual", "start_station_id",
                     "end_station_id", "start_lat", "start_lng", "end_lat", "end_lng", TARGET,
                 ]
-                frame = pd.read_parquet(PROCESSED_DIR / "trips.parquet", columns=columns).sort_values("started_at")
-                if len(frame) > 1_000_000:
-                    frame = frame.iloc[np.linspace(0, len(frame)-1, 1_000_000, dtype=int)]
+                frame = systematic_parquet_sample(
+                    PROCESSED_DIR / "trips.parquet", max_rows=1_000_000, columns=columns
+                ).sort_values("started_at")
                 frame = attach_hourly_weather(frame, WEATHER_PATH)
                 _, test = temporal_split(frame)
                 test = test.copy()
@@ -586,7 +594,7 @@ NOTEBOOKS = {
             code(
                 """
                 import json
-                import joblib
+                import pickle
                 import numpy as np
                 import pandas as pd
                 import matplotlib.pyplot as plt
@@ -638,7 +646,7 @@ NOTEBOOKS = {
                     PROCESSED_DIR / "trips.parquet", max_rows=SAMPLE_ROWS, columns=DATA_COLUMNS
                 ).sort_values("started_at").reset_index(drop=True)
                 trips = attach_hourly_weather(trips, WEATHER_PATH)
-                bundle = joblib.load(MODEL_DIR / "duration_model.joblib")
+                bundle = pickle.loads((MODEL_DIR / "duration_model.pkl").read_bytes())
                 feature_frame = features_for_bundle(bundle, trips).reset_index(drop=True)
                 model_features = list(bundle.get("features", MODEL_FEATURES))
                 missing_model_features = [
@@ -910,7 +918,7 @@ NOTEBOOKS = {
                         "r2": bundle["training_metrics"]["r2"],
                     },
                     {
-                        "split": "finale Q4-hold-out",
+                        "split": "finale tijdshold-out",
                         "mae_minutes": bundle["metrics"]["mae_minutes"],
                         "r2": bundle["metrics"]["r2"],
                     },
@@ -919,7 +927,7 @@ NOTEBOOKS = {
                 fig, axes = plt.subplots(1, 2, figsize=(14, 4.5))
                 sns.barplot(
                     data=generalization, x="split", y="mae_minutes", hue="split",
-                    palette={"training": COLORS["navy"], "finale Q4-hold-out": COLORS["teal"]},
+                    palette={"training": COLORS["navy"], "finale tijdshold-out": COLORS["teal"]},
                     legend=False, ax=axes[0],
                 )
                 sns.lineplot(
