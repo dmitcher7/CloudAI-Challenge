@@ -1,9 +1,0 @@
-services:
-  api:
-    build: .
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./models:/app/models:ro
-    environment:
-      MODEL_PATH: /app/models/duration_model.pkl

@@ -40,10 +40,10 @@ De ritdownload gebruikt standaard de volledige officiële historie vanaf juni 20
 ## Notebookvolgorde
 
 Open in VS Code de map `Brent` als workspace en selecteer rechtsboven in een notebook de kernel
-`venv\Scripts\python.exe` (`Python (venv)`). Iedere notebook begint met een bootstrapcel die de
+`.venv\Scripts\python.exe` (`Python (.venv)`). Iedere notebook begint met een bootstrapcel die de
 projectroot automatisch aan het Python-pad toevoegt. Daardoor werken imports uit `src` ook wanneer
 VS Code de notebookkernel vanuit `notebooks/` start. Notebook 01 laat `RUN_DOWNLOAD=False` staan als
-de jaarbestanden al aanwezig zijn; notebook 07 vereist daarnaast een geconfigureerd AWS-account.
+de jaarbestanden al aanwezig zijn.
 
 1. `notebooks/01_download_and_audit.ipynb` — geautomatiseerde download en schema-audit.
 2. `notebooks/02_eda_and_cleaning.ipynb` — cleaning, grafieken en inhoudelijke EDA.
@@ -51,22 +51,23 @@ de jaarbestanden al aanwezig zijn; notebook 07 vereist daarnaast een geconfigure
 4. `notebooks/04_hypothesis.ipynb` — vooraf vastgelegde hypothese, toets en effectgroottes.
 5. `notebooks/05_automl_and_models.ipynb` — baseline, AutoML en handmatig gekozen modellen.
 6. `notebooks/06_model_comparison.ipynb` — vergelijking, foutanalyse en definitieve keuze.
-7. `notebooks/07_aws_sagemaker.ipynb` — reproduceerbare SageMaker-training (vereist eigen AWS-account; installeer daarvoor ook `requirements-aws.txt`).
-8. `notebooks/08_model_dashboard.ipynb` — grafisch eindrapport met alle features, technieken, resultaten, importance en foutanalyse.
+7. `notebooks/08_model_dashboard.ipynb` — grafisch eindrapport met alle features, technieken, resultaten, importance en foutanalyse.
 
-De notebooks zijn dunne, uitlegbare onderzoekslagen boven herbruikbare code in `src/`. Genereer ze opnieuw met `python scripts/build_notebooks.py`.
+De notebooks zijn dunne, uitlegbare onderzoekslagen boven herbruikbare code in `src/`.
 
 ## Projectstructuur
 
 ```text
-app/                 FastAPI-backend en statische frontend
-data/                raw/interim/processed (niet in Git)
-notebooks/           genummerde onderzoeksnotebooks
-src/data/            downloader, validatie en cleaning
-src/features/        lekvrije feature engineering
-src/models/          training, evaluatie en predictie
-tests/               unit- en integratietests
-.github/workflows/   CI: test, train smoke-model, artifact
+notebooks/           genummerde analyse-, training- en presentatienotebooks
+data/                lokale raw-, weer- en processed data (niet in Git)
+models/              getrainde pipeline (.pkl) en metadata
+reports/             reproduceerbare metrics en hypotheseresultaten
+src/                 download, cleaning, features, training en predictie
+app/                 minimale FastAPI-backend en webinterface
+aws/                 SageMaker-entrypoint voor de verplichte cloudtraining
+.github/workflows/   automatische tests, training en modelartifact
+tests/               compacte controles op de volledige pipeline
+scripts/             deterministische kleine dataset voor CI-controles
 ```
 
 ## Reproduceerbaarheid en data
@@ -84,7 +85,9 @@ Historisch en verwacht weer komt van [Open-Meteo](https://open-meteo.com/). De t
 - histogram gradient boosting met log-, raw- en absolute-error-targetvarianten;
 - Extra Trees;
 - CatBoost met native categorische features;
-- FLAML als reproduceerbare AutoML-vergelijking (meegeleverd in `requirements.txt`);
+- FLAML als reproduceerbare AutoML-vergelijking van HistGradientBoosting, Extra Trees,
+  Random Forest, CatBoost en XGBoost (meegeleverd in `requirements.txt`); LightGBM is in de
+  gebruikte Windows/Python 3.13-runtime uitgesloten wegens een reproduceerbare native crash;
 - SageMaker-training met dezelfde train/testgrens.
 
 De steekproef wordt chronologisch gesplitst: de eerste 80% is ontwikkeldata en de laatste 20% is de finale hold-out. Binnen de ontwikkeldata vormt opnieuw de laatste 20% de selectievalidatie. Kandidaten worden dus nooit op de finale hold-out gekozen. Om zowel nauwkeurigheid als verklaarde variantie te verbeteren, wint binnen 0,10 minuut van de beste validatie-MAE het model met de hoogste validatie-R². Route- en stationshistoriek gebruikt uitsluitend eerder waargenomen ritten. Selectiemetrics staan in `reports/metrics.csv`, de eenmalige eindscore in `reports/final_holdout_metrics.csv` en de stabiliteit per maand in `reports/metrics_by_month.csv`. De uiteindelijke pipeline staat in `models/duration_model.pkl`; zonder dit artifact weigert de API te starten.
@@ -99,6 +102,13 @@ op de aparte finale tijdshold-out (30 mei 2025–30 september 2026) een MAE van
 3,51 minuten, RMSE van 8,75 minuten en R² van 0,454. De exacte actuele waarden
 staan in `reports/` en `models/duration_model.metadata.json`.
 
+De eerlijke FLAML-run gebruikt dezelfde 639.865 selectie-trainingsritten en
+159.967 chronologische validatieritten. Alle vijf stabiele learners zijn geprobeerd;
+FLAML koos XGBoost met een validatie-MAE van 4,48 minuten. Dat is slechter dan de
+3,62 minuten van `hist_gradient_boosting_absolute`, dat daarom het eindmodel blijft.
+De AutoML-resultaten staan in `reports/automl_metrics.csv` en
+`reports/automl_result.json`.
+
 ### Eerdere referentierun (alleen 2024)
 
 Deze cijfers zijn uitsluitend de eerdere referentie vóór de all-years-hertraining. De lokale run op januari–december 2024 leverde 44.199.909 geldige ritten op. Voor
@@ -112,11 +122,10 @@ in `reports/`; notebooks 04, 06 en 08 berekenen aanvullend hypothese-, subgroep-
 ## Deployment
 
 ```powershell
-docker build -t citibike-duration .
-docker run --rm -p 8000:8000 citibike-duration
+uvicorn app.main:app --reload
 ```
 
-`GET /health` geeft modelstatus; `POST /predict` geeft een puntschatting en duidelijke beperkingen. De GitHub Actions-workflow valideert iedere push en traint een smoke-model op deterministische testdata. Een handmatige workflow-run kan officiële maanden downloaden en een nieuw modelartifact produceren. Voor publieke hosting kan dezelfde container naar AWS App Runner, Render, Railway of een VM worden gebracht.
+Open daarna <http://127.0.0.1:8000>. `GET /health` geeft de modelstatus en `POST /predict` geeft een puntschatting met duidelijke beperkingen. De GitHub Actions-workflow valideert iedere push en traint een smoke-model op deterministische testdata. Een handmatige workflow-run kan officiële maanden downloaden en een nieuw modelartifact produceren.
 
 ## Belangrijkste beperkingen
 

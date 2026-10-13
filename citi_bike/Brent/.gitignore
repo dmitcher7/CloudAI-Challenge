@@ -27,6 +27,7 @@ htmlcov/
 
 # Keep reproducible model-comparison results even if a parent ignores CSV files.
 !reports/metrics.csv
+!reports/automl_metrics.csv
 !reports/metrics_by_month.csv
 !reports/final_holdout_metrics.csv
 

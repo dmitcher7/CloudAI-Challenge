@@ -60,10 +60,3 @@ jobs:
             models/duration_model.metadata.json
             reports/metrics.csv
           retention-days: 30
-
-  container:
-    runs-on: ubuntu-latest
-    needs: validate-and-train
-    steps:
-      - uses: actions/checkout@v4
-      - run: docker build -t green-wheels:${{ github.sha }} .

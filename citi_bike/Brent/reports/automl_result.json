@@ -1,0 +1,85 @@
+{
+  "estimator": "xgboost",
+  "best_config": {
+    "n_estimators": 695,
+    "max_leaves": 8,
+    "min_child_weight": 90.66841225597678,
+    "learning_rate": 0.07535123507578713,
+    "subsample": 0.8086688875909248,
+    "colsample_bylevel": 1.0,
+    "colsample_bytree": 1.0,
+    "reg_alpha": 0.33804325886088216,
+    "reg_lambda": 1.9649612248177555
+  },
+  "selection_metrics": {
+    "mae_minutes": 4.480623395841156,
+    "rmse_minutes": 8.72946075533014,
+    "median_ae_minutes": 2.7270564592997233,
+    "r2": 0.46888526347021564
+  },
+  "best_validation_mae_per_estimator": {
+    "histgb": 4.48231701337761,
+    "extra_tree": 5.534383321068845,
+    "rf": 5.635456445809322,
+    "catboost": 4.522416464355734,
+    "xgboost": 4.480623395841156
+  },
+  "best_config_per_estimator": {
+    "histgb": {
+      "n_estimators": 571,
+      "max_leaves": 9,
+      "min_samples_leaf": 98,
+      "learning_rate": 0.4041158477145199,
+      "log_max_bin": 7,
+      "l2_regularization": 5.538873543436914,
+      "max_iter": 571
+    },
+    "extra_tree": {
+      "n_estimators": 10,
+      "max_features": 0.675975769877768,
+      "max_leaves": 55
+    },
+    "rf": {
+      "n_estimators": 23,
+      "max_features": 1.0,
+      "max_leaves": 20
+    },
+    "catboost": {
+      "early_stopping_rounds": 11,
+      "learning_rate": 0.01040847310179679,
+      "n_estimators": 8192
+    },
+    "xgboost": {
+      "n_estimators": 695,
+      "max_leaves": 8,
+      "min_child_weight": 90.66841225597678,
+      "learning_rate": 0.07535123507578713,
+      "subsample": 0.8086688875909248,
+      "colsample_bylevel": 1.0,
+      "colsample_bytree": 1.0,
+      "reg_alpha": 0.33804325886088216,
+      "reg_lambda": 1.9649612248177555
+    }
+  },
+  "estimators_requested": [
+    "histgb",
+    "extra_tree",
+    "rf",
+    "catboost",
+    "xgboost"
+  ],
+  "estimators_not_tried": [],
+  "runtime_exclusions": {
+    "lgbm": "LightGBM 4.7.0 is excluded by default because its native Windows wheel raises an access violation under the project's Python 3.13 runtime."
+  },
+  "time_budget_seconds": 900,
+  "max_trial_seconds": 180,
+  "sample_rows": 999791,
+  "train_rows": 639865,
+  "validation_rows": 159967,
+  "validation_start": "2024-04-05 09:34:33.218000",
+  "validation_end": "2025-05-30 21:35:14.173000",
+  "reserved_final_holdout_rows": 199959,
+  "reserved_final_holdout_start": "2025-05-30 21:37:35.064000",
+  "reserved_final_holdout_end": "2026-09-30 23:28:17.090000"
+}
