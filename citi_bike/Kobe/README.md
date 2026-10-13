@@ -14,7 +14,20 @@ gemiste groene rit (thema *Going green*).
 1. **Modelselectie op 2024.** Op één jaar (44 miljoen ritten) vergeleken we grondig zes modellen. Gradient boosting met Poisson-verlies won, in elke fold.
 2. **Het definitieve model op alle data.** De gekozen techniek, getraind op 13 jaar. Meer jaren betekent meer voorbeelden van zeldzame situaties (feestdagen, stormen, sneeuw) maar ook een netwerk dat sterk veranderde. Daarom komen er drie kenmerken bij en wordt er tijdsgebonden gevalideerd.
 
-## Notebooks (in volgorde uitvoeren)
+## Kort: de map `Final/`
+
+Wie het project in twee notebooks wil lezen, begint in [Final/](Final/):
+
+| Notebook | Wat |
+|---|---|
+| [Final/01_cleaning.ipynb](Final/01_cleaning.ipynb) | van 44 zip-bestanden naar de modeltabel; elke cleaningkeuze met vaststelling, bewijs en motivatie |
+| [Final/02_analyse_en_modellen.ipynb](Final/02_analyse_en_modellen.ipynb) | EDA, hypotheses, modelselectie op 2024, het definitieve model op alle data, foutenanalyse, deployment en conclusie, met bij elke poging waarom, resultaat en waarom (niet) verder |
+
+Een uitgebreide uitleg van alles wat gebruikt is (data, cleaning, technieken, toetsen, modellen, deployment, tools, begrippenlijst en oefenvragen), met grafieken, staat in [Final/UITLEG.md](Final/UITLEG.md).
+
+`02` gebruikt standaard de opgeslagen zoekresultaten (`RUN_SEARCHES = False`, ± 1 uur); met `RUN_SEARCHES = True` worden ook alle zoektochten opnieuw uitgevoerd (enkele uren). De werknotebooks hieronder bevatten dezelfde stappen in meer detail.
+
+## Werknotebooks (in volgorde uitvoeren)
 
 | Notebook | Data | Wat |
 |---|---|---|
