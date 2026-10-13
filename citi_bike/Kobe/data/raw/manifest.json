@@ -24,7 +24,7 @@
     ],
     "sha256": "4f9936239e741078da5c64206702240d15c5d57fdba2c16bb49b98f589b137b9",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:20:22+00:00"
+    "recorded_at_utc": "2026-10-12T16:53:16+00:00"
   },
   {
     "file": "2014-citibike-tripdata.zip",
@@ -46,7 +46,7 @@
     ],
     "sha256": "0c8468df81be760a87605cf6f83d89b5c30714632b0f7486899673e7fb227878",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:20:22+00:00"
+    "recorded_at_utc": "2026-10-12T16:53:17+00:00"
   },
   {
     "file": "2015-citibike-tripdata.zip",
@@ -72,7 +72,7 @@
     ],
     "sha256": "b6085d17d86d3f156bec59e76420a9d24a5fac83981a1634819be821968ed052",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:20:23+00:00"
+    "recorded_at_utc": "2026-10-12T16:53:17+00:00"
   },
   {
     "file": "2016-citibike-tripdata.zip",
@@ -102,7 +102,7 @@
     ],
     "sha256": "3f2a47babfe48f1397247861867bd1a6057f62d4564d1285f9739eb4b5b25495",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:20:23+00:00"
+    "recorded_at_utc": "2026-10-12T16:53:19+00:00"
   },
   {
     "file": "2017-citibike-tripdata.zip",
@@ -132,7 +132,7 @@
     ],
     "sha256": "d71ee823b0ef9fadf948a75b52ace6f6a5a363202f34e544f6092b80ab84241d",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:20:23+00:00"
+    "recorded_at_utc": "2026-10-12T16:53:20+00:00"
   },
   {
     "file": "2018-citibike-tripdata.zip",
@@ -177,7 +177,7 @@
     ],
     "sha256": "91f39eda364531181bb2b983afb69e6875106e5032c6d8418cee647115e386d7",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:20:24+00:00"
+    "recorded_at_utc": "2026-10-12T16:53:22+00:00"
   },
   {
     "file": "2019-citibike-tripdata.zip",
@@ -213,7 +213,7 @@
     ],
     "sha256": "2e86870f91f51ea7f3a5209cba159e043f0507d9bae80137e4d7c0433a2b2354",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:20:25+00:00"
+    "recorded_at_utc": "2026-10-12T16:53:23+00:00"
   },
   {
     "file": "2020-citibike-tripdata.zip",
@@ -250,7 +250,7 @@
     ],
     "sha256": "32f7d883b6a7afc505bde6f4d15b505efe85c691c9117bbf68824037417874ea",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:20:34+00:00"
+    "recorded_at_utc": "2026-10-12T16:53:48+00:00"
   },
   {
     "file": "2021-citibike-tripdata.zip",
@@ -296,7 +296,7 @@
     ],
     "sha256": "20c5cb71bc2525e2ddf4a1051981cb5c1b6761ab6ec0425a6327120a7de2d495",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:20:48+00:00"
+    "recorded_at_utc": "2026-10-12T16:54:21+00:00"
   },
   {
     "file": "2022-citibike-tripdata.zip",
@@ -342,7 +342,7 @@
     ],
     "sha256": "6ef907ab1737aba619d09549a1ac62604da1b5190c7defb4ab109084b2bcc1c9",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:03+00:00"
+    "recorded_at_utc": "2026-10-12T16:54:59+00:00"
   },
   {
     "file": "2023-citibike-tripdata.zip",
@@ -392,7 +392,7 @@
     ],
     "sha256": "f5ac8d2b9556a4f18925569681d60e960eae44ce7e2999c74726c8e1ff706c07",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:23+00:00"
+    "recorded_at_utc": "2026-10-12T16:55:46+00:00"
   },
   {
     "file": "202401-citibike-tripdata.zip",
@@ -404,7 +404,7 @@
     ],
     "sha256": "0a2e81eacd7bf3890712de8f2a1b56bda985c17d9e61b08acf5e7c7ec9f20eb0",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:23+00:00"
+    "recorded_at_utc": "2026-10-12T16:55:46+00:00"
   },
   {
     "file": "202402-citibike-tripdata.zip",
@@ -417,7 +417,7 @@
     ],
     "sha256": "f0209d02b862ec7422ea251f55626c007c8289adb62230e870ed7da24ef77f05",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:23+00:00"
+    "recorded_at_utc": "2026-10-12T16:55:47+00:00"
   },
   {
     "file": "202403-citibike-tripdata.zip",
@@ -430,7 +430,7 @@
     ],
     "sha256": "d1a58caa37a66bbe6477680f3fba283f6f638475855591a4a2e8b73dc4cf8470",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:24+00:00"
+    "recorded_at_utc": "2026-10-12T16:55:48+00:00"
   },
   {
     "file": "202404-citibike-tripdata.zip",
@@ -444,7 +444,7 @@
     ],
     "sha256": "32b8c4f3677402b8e5981070b288bb88f38fd82c3264d934c1a39c597dc4bed7",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:24+00:00"
+    "recorded_at_utc": "2026-10-12T16:55:50+00:00"
   },
   {
     "file": "202405-citibike-tripdata.zip",
@@ -459,7 +459,7 @@
     ],
     "sha256": "7c557c96b10b12de4391b97963cda166c46dc75a6a2293714c4ba740af740866",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:25+00:00"
+    "recorded_at_utc": "2026-10-12T16:55:51+00:00"
   },
   {
     "file": "202406-citibike-tripdata.zip",
@@ -474,7 +474,7 @@
     ],
     "sha256": "d54f8cb6c953801265448b6835b1aff17ae7cb687caf47fd784b1ff8047df808",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:26+00:00"
+    "recorded_at_utc": "2026-10-12T16:55:53+00:00"
   },
   {
     "file": "202407-citibike-tripdata.zip",
@@ -489,7 +489,7 @@
     ],
     "sha256": "fd5dccd7bd69c499f6d0f78e8b10e91316ff5bfabdf25b7fc0efc3007c27d414",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:27+00:00"
+    "recorded_at_utc": "2026-10-12T16:55:55+00:00"
   },
   {
     "file": "202408-citibike-tripdata.zip",
@@ -504,7 +504,7 @@
     ],
     "sha256": "9d28e1c00036b880ba42a57acecc529427efd95a272221c3e47f9065a3f63a36",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:27+00:00"
+    "recorded_at_utc": "2026-10-12T16:55:57+00:00"
   },
   {
     "file": "202409-citibike-tripdata.zip",
@@ -519,7 +519,7 @@
     ],
     "sha256": "eb1f0c66ab9da721f3f909fc0356c30a236bb79c2b2320977ccd39b2be4f00c8",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:28+00:00"
+    "recorded_at_utc": "2026-10-12T16:55:59+00:00"
   },
   {
     "file": "202410-citibike-tripdata.zip",
@@ -535,7 +535,7 @@
     ],
     "sha256": "44c1fa43aa217dd742f04ebe2ce3b7f533bb27ff01d358bf6d41f83e92a7fbc2",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:29+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:02+00:00"
   },
   {
     "file": "202411-citibike-tripdata.zip",
@@ -549,7 +549,7 @@
     ],
     "sha256": "92912a6907ea5029907dd6c95d80cbf7cd3560f2da5014ab23dbee1851189a88",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:30+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:03+00:00"
   },
   {
     "file": "202412-citibike-tripdata.zip",
@@ -562,7 +562,7 @@
     ],
     "sha256": "c83f6e01ef4a288a3940ae08373593bd282cbe7dee6e79a854ba993486b0cdeb",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:30+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:04+00:00"
   },
   {
     "file": "202501-citibike-tripdata.zip",
@@ -575,7 +575,7 @@
     ],
     "sha256": "ed3b0138903960afe50386ab44fec8bf52d69474b26f5c0af83e648094aea096",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:30+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:05+00:00"
   },
   {
     "file": "202502-citibike-tripdata.zip",
@@ -588,7 +588,7 @@
     ],
     "sha256": "e4860762fb07561bbda251a20223d996e39c6c2c8bc2592896507bfbaa40ce78",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:31+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:06+00:00"
   },
   {
     "file": "202503-citibike-tripdata.zip",
@@ -602,7 +602,7 @@
     ],
     "sha256": "f5cc8c5a4ed99e719a4a9d72014b3b206ab03c2b23ce05a2af4be6564444833f",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:31+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:07+00:00"
   },
   {
     "file": "202504-citibike-tripdata.zip",
@@ -616,7 +616,7 @@
     ],
     "sha256": "5bda09477bb675e5a481a6f68acd367c2cae48e745a97011ca8a22c0073cece4",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:32+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:08+00:00"
   },
   {
     "file": "202505-citibike-tripdata.zip",
@@ -631,7 +631,7 @@
     ],
     "sha256": "0f5edc46361c4581c614a19cb697271b6f04143f6648b56da8fc18f7310ab103",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:33+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:10+00:00"
   },
   {
     "file": "202506-citibike-tripdata.zip",
@@ -646,7 +646,7 @@
     ],
     "sha256": "fdc15ebc98ddef6ffa6825a71616e2f704def8376590881f91b0109cd2d81f9b",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:34+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:12+00:00"
   },
   {
     "file": "202507-citibike-tripdata.zip",
@@ -661,7 +661,7 @@
     ],
     "sha256": "5c336f33986e229203308f1e177f42d46bce3c6a3a85aac7d412cd7109b3253b",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:34+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:15+00:00"
   },
   {
     "file": "202508-citibike-tripdata.zip",
@@ -677,7 +677,7 @@
     ],
     "sha256": "c15c6f1a3c3084fa03c012a20f88474907cca74119c31e58eb877b753dbc19b1",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:35+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:18+00:00"
   },
   {
     "file": "202509-citibike-tripdata.zip",
@@ -693,7 +693,7 @@
     ],
     "sha256": "b1721f1f9306daf2ca5aa358efe64c70da7c58cda82ae595692bb2d7cf2d5e46",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:36+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:20+00:00"
   },
   {
     "file": "202510-citibike-tripdata.zip",
@@ -708,7 +708,7 @@
     ],
     "sha256": "6a8ea3a973ed92caa6129795ff5e0cc758aa9d42c81af579b8f1ebf9f555a6be",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:37+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:22+00:00"
   },
   {
     "file": "202511-citibike-tripdata.zip",
@@ -722,7 +722,7 @@
     ],
     "sha256": "279fc68f6ebc06dec938c7574f843707b2e86c590b3126050672938ad0a8345f",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:38+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:23+00:00"
   },
   {
     "file": "202512-citibike-tripdata.zip",
@@ -735,7 +735,7 @@
     ],
     "sha256": "504448a1cd0b8a4630da880a861bc73bbd4d88fad59a66f18ec23a84e5747f45",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:38+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:24+00:00"
   },
   {
     "file": "202601-citibike-tripdata.zip",
@@ -747,7 +747,7 @@
     ],
     "sha256": "8d579be9515f797739f0ff907576da44f25413bc677e1286a876696a71ae9755",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:38+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:25+00:00"
   },
   {
     "file": "202602-citibike-tripdata.zip",
@@ -759,7 +759,7 @@
     ],
     "sha256": "c325264841a272799bee92c89401c6f6162406cc52a5e77283640b152a76a03c",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:38+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:25+00:00"
   },
   {
     "file": "202603-citibike-tripdata.zip",
@@ -772,7 +772,7 @@
     ],
     "sha256": "358bf569d44f5e69a5453e98ed813b3de2b93b4b1262867f49be72b80fa334ce",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:39+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:26+00:00"
   },
   {
     "file": "202604-citibike-tripdata.zip",
@@ -786,7 +786,7 @@
     ],
     "sha256": "fefc1fca369818baeb9206792e02a098b71b59f263064b6627b42317965e2ffb",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:39+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:27+00:00"
   },
   {
     "file": "202605-citibike-tripdata.zip",
@@ -801,7 +801,7 @@
     ],
     "sha256": "b9461221fb7ce806d5274b046b4de46414a1d1116ba2bc46c6a870b7bda71adf",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:40+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:29+00:00"
   },
   {
     "file": "202606-citibike-tripdata.zip",
@@ -817,7 +817,7 @@
     ],
     "sha256": "4ba77e6422cee141041638f988281c13e5ebf72bd9e5ab89638eb5d7d3763f60",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:41+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:31+00:00"
   },
   {
     "file": "202607-citibike-tripdata.zip",
@@ -832,7 +832,7 @@
     ],
     "sha256": "9aeb4f2a1744ce4a81ab5a2bc999bb3e7794fc0a010415e64aeb80283a0c21c0",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:42+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:34+00:00"
   },
   {
     "file": "202608-citibike-tripdata.zip",
@@ -848,7 +848,7 @@
     ],
     "sha256": "048ecc43853b2c3a8855a3ed22b177fd110318e3df9478b4b6d018e960215610",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:43+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:37+00:00"
   },
   {
     "file": "202609-citibike-tripdata.zip",
@@ -863,6 +863,6 @@
     ],
     "sha256": "81b5d756665ef7a69cc5189349511fb7ec973fcf20ab6ca7078732cb7e50537c",
     "status": "al aanwezig",
-    "recorded_at_utc": "2026-10-09T19:21:43+00:00"
+    "recorded_at_utc": "2026-10-12T16:56:38+00:00"
   }
 ]
