@@ -65,14 +65,21 @@ jobs:
             -H "Content-Type: application/json" \
             -H "x-api-key: $API_KEY" \
             -d '{
-              "started_at": "2024-06-15T09:30:00",
+              "started_at": "2026-06-15T08:30:00",
               "rideable_type": "classic_bike",
               "member_casual": "member",
-              "start_station_id": "HB101",
-              "start_lat": 40.7359,
-              "start_lng": -74.0303
+              "start_station_id": "6140.05",
+              "start_lat": 40.74174,
+              "start_lng": -73.99416,
+              "end_station_id": "5905.12",
+              "end_lat": 40.73497,
+              "end_lng": -73.99073,
+              "temperature_2m": 20,
+              "relative_humidity_2m": 60,
+              "precipitation": 0,
+              "wind_speed_10m": 10
             }' | tee citi_predict.json
-          jq -e '.predicted_duration_minutes >= 0' citi_predict.json
+          jq -e '.predicted_duration_minutes >= 0 and .predicted_duration_minutes <= 180' citi_predict.json
 
       - name: Predict example Citi Bike demand
         env:

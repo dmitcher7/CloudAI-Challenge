@@ -44,7 +44,7 @@ Dit document legt **alles** uit wat in het ritduurdeel van het Citi Bike-project
 | R² | **0,454** |
 | Ter vergelijking: baseline (altijd de mediaan) | MAE 7,30 minuten (op de validatie), R² −0,03 |
 
-**Belangrijke voorwaarde:** het model gebruikt de **bestemming**. Het werkt dus alleen als de gebruiker vooraf zegt waar hij naartoe fietst. Het model op de teamserver is een ouder, eenvoudiger model zonder bestemming (§12).
+**Belangrijke voorwaarde:** het model gebruikt de **bestemming**. Het werkt dus alleen als de gebruiker vooraf zegt waar hij naartoe fietst. Op de teamserver kies je daarom een start- én een eindstation (§12).
 
 ---
 
@@ -412,19 +412,20 @@ We husselen één kenmerk door elkaar (op 12.000 ritten uit de eindtest, 3 herha
 
 ## 12. Deployment
 
-### 12.1 Twee versies
-| | Eigen webapp (`citi_bike/Brent/app/`) | Teamserver (`deploy/citi_bike/`, `/citi_bike`) |
+### 12.1 Het eindmodel op de teamserver
+Het eindmodel (30 kenmerken, MAE 3,51) draait op de teamserver onder `/citi_bike`, met de pagina `citi_bike.html`. Daarvoor waren twee dingen nodig:
+
+1. **Dezelfde bibliotheekversies als de server.** Alle modellen draaien in één proces met scikit-learn 1.4.2 en numpy 1.26.4 (de versies die PyCaret 3.3 vereist, zie de hoofd-README). Een `.pkl`-bestand bewaart de interne opbouw van de Python-objecten; een model opgeslagen met scikit-learn 1.6.1 kon de server niet openen (`_RemainderColsList` bestaat pas sinds 1.5). Het eindmodel is daarom opnieuw getraind met Python 3.12, scikit-learn 1.4.2 en numpy 1.26.4, met exact dezelfde code en data; de resultaten zijn dezelfde (MAE 3,51). De gebruikte versies staan nu in de bundle (`runtime_versions`).
+2. **Dezelfde kenmerken in de API als in de training.** Alleen de map `deploy/` gaat naar de server, dus de berekening van de 30 kenmerken (afstand en richting, routehistoriek, tijd, feestdag) staat opnieuw in `deploy/citi_bike/api.py`. Een test vergeleek 500 willekeurige ritten: de voorspellingen van de API en van `src/models/predict.py` zijn identiek.
+
+| | Teamserver (`/citi_bike`) | Eigen webapp (`citi_bike/Brent/app/`) |
 |---|---|---|
-| Model | het **eindmodel** (`models/duration_model.pkl`, 30 kenmerken, MAE 3,51) | een **ouder model** (alleen het eerste kwartaal van 2024, 12 kenmerken, MAE 6,69, R² 0,05) |
-| Invoer | vertrekmoment, fietstype, klanttype, start- én **eindstation** met coördinaten | vertrekmoment, fietstype, klanttype, startstation en coördinaten |
-| Weer | haalt de **weersvoorspelling** bij Open-Meteo; lukt dat niet, dan de mediaan uit de training | geen weer |
-| Routehistoriek | ja, uit de bundle | nee |
+| Model | het eindmodel | het eindmodel |
+| Invoer | vertrekmoment, fietstype, klanttype, start- en eindstation (op naam gekozen uit `GET /citi_bike/stations`, 2.423 huidige stations) | idem, met id's en coördinaten |
+| Weer | de pagina haalt de weersvoorspelling bij Open-Meteo; zonder voorspelling (bv. meer dan 2 weken vooruit) vult het model de mediaan uit de training in | de app haalt de voorspelling zelf |
+| Antwoord | duur in minuten, afstand in rechte lijn, aantal eerdere ritten op de route, gemiddelde fout op de eindtest | duur en bron van het weer |
 
-**Waarom draait het eindmodel niet op de teamserver?**
-1. De API van de teamserver berekent alleen de kenmerken bij vertrek zonder bestemming, routehistoriek en weer. Het eindmodel vraagt 30 kenmerken.
-2. Het eindmodel is getraind met scikit-learn 1.6.1 (zie `requirements.txt`); de server draait 1.4.2. Een model opgeslagen met een andere scikit-learn-versie laadt daar niet betrouwbaar.
-
-Wie het eindmodel wil tonen, start de eigen webapp lokaal (`uvicorn app.main:app`, zie de README van Brent).
+**Eén aanpassing tegenover de trainingscode:** `make_features` zoekt feestdagen tussen het eerste en het laatste vertrekmoment, inclusief kloktijd. Bij de training (ritten over jaren) is dat juist, maar bij één voorspelling (bv. 4 juli om 8u30) zou de feestdag (4 juli 0u00) buiten dat bereik vallen. De API zoekt daarom op hele dagen; dat geeft dezelfde waarde als bij de training.
 
 ### 12.2 Onderdelen
 | Onderdeel | Wat het doet |
@@ -433,7 +434,7 @@ Wie het eindmodel wil tonen, start de eigen webapp lokaal (`uvicorn app.main:app
 | **`src/models/predict.py`** | laadt de bundle, berekent de routehistoriek en de kenmerken, en begrenst de voorspelling op 0–180 minuten |
 | **FastAPI + Pydantic** (eigen app) | `GET /health`, `POST /predict`, model-card; Pydantic controleert de invoer (bv. coördinaten in NYC, klanttype member/casual) |
 | **Webinterface** (`app/static/`) | formulier en resultaat, met de bron van het weer |
-| **Teamserver** | dezelfde Oracle VM, `deploy-api.yml` en smoke test als de vraag per zone; pagina `citi_bike.html` |
+| **Teamserver** (`deploy/citi_bike/`) | dezelfde Oracle VM, `deploy-api.yml` en smoke test als de vraag per zone; `check_model.py` test vóór elke deploy o.a. dat een verdere bestemming een langere rit geeft en dat een rit zonder bestemming geweigerd wordt (HTTP 422); pagina `citi_bike.html` |
 | **Tests** (`tests/`, pytest) | data, kenmerken, routehistoriek, steekproef, weer, AutoML en de API |
 | **AWS** (`aws/train_entrypoint.py`) | hetzelfde `train_and_compare` als SageMaker-trainingsjob: leest de Parquet-data uit `SM_CHANNEL_TRAIN` en schrijft model en metrics naar `SM_MODEL_DIR` |
 
@@ -451,7 +452,7 @@ Wie het eindmodel wil tonen, start de eigen webapp lokaal (`uvicorn app.main:app
 | Datums zonder vaste notatie | waarschuwingen en terugval op `dateutil` in 2014 en 2016 | een vaste notatie per bestand is sneller en controleerbaar |
 | Station-id's als getal ingelezen | dezelfde id kan als `354` of `354.0` voorkomen, en oude en nieuwe id's (`72`, `6926.01`) worden niet gekoppeld | lees id's als tekst in en herstel ze; het effect op de MAE is waarschijnlijk klein (stations scoren laag in de permutation importance, de afstand vangt de locatie op), maar het is niet gemeten |
 | Interne stations | depots en werkplaatsen (± 18.800 ritten) zijn niet weggefilterd | voor de ritduur geen klantritten; een filter zoals bij de vraag per zone zou ze weglaten |
-| Eindmodel op de teamserver | niet gedeployd (andere kenmerken en scikit-learn-versie) | train met dezelfde bibliotheekversie als de server, en zorg dat de API dezelfde kenmerken berekent als de training |
+| Eindmodel op de teamserver | eerst niet te laden (getraind met scikit-learn 1.6.1, server 1.4.2) en de server-API berekende maar 12 van de 30 kenmerken | opnieuw getraind met de versies van de server, en de API berekent nu dezelfde kenmerken als de training (getest: identieke voorspellingen). Les: train wat naar de server gaat altijd met dezelfde bibliotheekversies |
 
 ---
 
@@ -459,12 +460,12 @@ Wie het eindmodel wil tonen, start de eigen webapp lokaal (`uvicorn app.main:app
 
 | Tool | Versie | Gebruikt voor |
 |---|---|---|
-| Python | 3.11–3.13 | alles |
+| Python | 3.12 (eindmodel; 3.11–3.12 ondersteund) | alles |
 | pandas | 2.2.3 | tabellen, groeperen, tijdreeksen |
-| numpy | 2.1.3 | rekenen |
+| numpy | 1.26.4 (zelfde als de server) | rekenen |
 | pyarrow | 18.1.0 | Parquet lezen en schrijven (in stukken) |
 | requests | 2.32.3 | downloaden, Open-Meteo |
-| scikit-learn | 1.6.1 | HistGB, Extra Trees, Ridge, preprocessing, metrics, permutation importance |
+| scikit-learn | **1.4.2** (zelfde als de server) | HistGB, Extra Trees, Ridge, preprocessing, metrics, permutation importance |
 | CatBoost | 1.2.10 | gradient boosting met categorieën |
 | FLAML | 2.3.3 | AutoML (met XGBoost) |
 | scipy | 1.14.1 | Mann–Whitney U-toets |
@@ -547,8 +548,8 @@ De kans dat een willekeurige casual rit langer is dan een willekeurige memberrit
 **Waarom is het weer onbelangrijk in de permutation importance?**
 Het model haalt de informatie uit andere kenmerken (klanttype, uur), en naast de afstand is het effect klein. Permutation importance meet wat het model gebruikt, niet of iets in de werkelijkheid samenhangt.
 
-**Waarom staat het eindmodel niet op de teamserver?**
-De server-API berekent geen bestemming, routehistoriek en weer, en de server gebruikt een andere scikit-learn-versie. Het eindmodel draait in de eigen webapp.
+**Waarom moest het eindmodel opnieuw getraind worden voor de server?**
+Alle modellen op de server draaien met scikit-learn 1.4.2 en numpy 1.26.4. Een `.pkl`-bestand bewaart de interne opbouw van de objecten van één bepaalde versie; het model van scikit-learn 1.6.1 kon de server niet openen. Opnieuw getraind met dezelfde code en data in de versies van de server, gaf het dezelfde MAE (3,51).
 
 **Wat zijn de belangrijkste beperkingen?**
 Geen echte route, geen tussenstops, geen verkeer of evenementen, het weer op één punt in de stad, en de bestemming moet vooraf gekend zijn.
@@ -579,7 +580,7 @@ Geen echte route, geen tussenstops, geen verkeer of evenementen, het weer op é�
 | `citi_bike/Brent/tests/` | pytest-tests |
 | `citi_bike/Brent/aws/` | SageMaker-trainingsscript |
 | `citi_bike/Brent/notebooks/` | de oorspronkelijke notebooks 01–08 (de inhoud zit in de twee notebooks in deze map) |
-| `deploy/citi_bike/`, `deploy/web/citi_bike.html` | API en pagina op de teamserver (ouder model) |
+| `deploy/citi_bike/`, `deploy/web/citi_bike.html` | API (met `stations.json`) en pagina op de teamserver (het eindmodel) |
 
 ---
 

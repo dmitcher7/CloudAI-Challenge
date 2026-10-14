@@ -65,7 +65,7 @@ deploy/                      -> alles wat naar de VM gaat
 ├── check_model.py           -> test API + modellen vóór elke deploy
 ├── web/                     -> index.html (keuzepagina), mushrooms.html, citi_bike_models.html, citi_bike.html, citi_bike_demand.html
 ├── mushrooms/               -> API logic + stacking.pkl
-├── citi_bike/               -> API logic + model.pkl (ritduur en gedrag)
+├── citi_bike/               -> API logic + model.pkl + stations.json (ritduur bij vertrek, met bestemming)
 └── citi_bike_demand/        -> API logic + model.pkl (vraag per zone per uur)
 ```
 
@@ -75,7 +75,7 @@ deploy/                      -> alles wat naar de VM gaat
 | `/citi_bike_models.html` | Keuzepagina tussen de twee Citi Bike-modellen |
 | `/mushrooms.html`, `/citi_bike.html`, `/citi_bike_demand.html` | Gebruikersinterface (webpagina) per model |
 | `GET /mushrooms/`, `POST /mushrooms/predict` | Mushroom-model voorspelling (met 15% threshold) |
-| `GET /citi_bike/`, `POST /citi_bike/predict` | Citi Bike-model (voorspelt ritduur/gedrag) |
+| `GET /citi_bike/`, `GET /citi_bike/stations`, `POST /citi_bike/predict` | Citi Bike-ritduurmodel (ritduur bij vertrek; vraagt start, bestemming en optioneel het weer) |
 | `GET /citi_bike_demand/`, `POST /citi_bike_demand/predict`, `POST /citi_bike_demand/predict_day` | Citi Bike-vraagmodel (vertrekken per zone per uur) |
 | `/health`, `/docs` | Status en Swagger UI voor het testen van de API |
 
