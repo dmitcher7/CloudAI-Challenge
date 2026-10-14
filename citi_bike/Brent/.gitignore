@@ -13,6 +13,9 @@ models/*.tmp
 
 # Python / notebooks
 .venv/
+.venv-sklearn142/
+.python/
+.uv-cache/
 venv/
 __pycache__/
 *.py[cod]

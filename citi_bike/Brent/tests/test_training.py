@@ -1,3 +1,4 @@
+from importlib.metadata import version
 from pathlib import Path
 
 from scripts.make_demo_data import make_demo_data
@@ -21,6 +22,8 @@ def test_training_and_prediction_roundtrip(tmp_path: Path):
     assert metrics.loc[metrics["selected"], "model"].iloc[0] == bundle["model_name"]
     assert bundle["metrics"]["test_rows"] > 0
     assert bundle["route_history_summary"]["routes"] > 0
+    assert bundle["runtime_versions"]["scikit-learn"] == version("scikit-learn")
+    assert bundle["runtime_versions"]["numpy"] == version("numpy")
 
     loaded = load_bundle(model_path)
     prediction = predict_rows(loaded, frame.iloc[[-1]])
