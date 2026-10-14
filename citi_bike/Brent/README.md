@@ -2,7 +2,7 @@
 
 **Team:** Git Push & pray
 
-Dit project voorspelt vóór vertrek de duur van een Citi Bike-rit. De volledige workflow loopt van datacontrole en cleaning tot modeltraining, evaluatie en een kleine webapp.
+Dit project voorspelt vóór vertrek de duur van een Citi Bike-rit. De volledige workflow loopt van datacontrole en cleaning tot modeltraining, evaluatie en een herbruikbaar modelartifact.
 
 ## Notebooks
 
@@ -13,7 +13,7 @@ Dit project voorspelt vóór vertrek de duur van een Citi Bike-rit. De volledige
 | 1 | [`01_data_cleaning_en_eda.ipynb`](notebooks/gecombineerd/01_data_cleaning_en_eda.ipynb) | Downloadconfiguratie, data-audit, voorbereiding, cleaning, aggregaties, grafieken en EDA. |
 | 2 | [`02_modellen_en_evaluatie.ipynb`](notebooks/gecombineerd/02_modellen_en_evaluatie.ipynb) | Hypothesetoets, modellen, AutoML-resultaten, modelselectie, finale evaluatie, foutanalyse en dashboard. |
 
-De notebooks `01_...` tot en met `08_...` in de hoofdmap `notebooks/` bevatten dezelfde inhoud, maar opgesplitst in kleinere stappen.
+De notebooks `01_...` tot en met `07_...` in de hoofdmap `notebooks/` bevatten dezelfde inhoud, maar opgesplitst in kleinere stappen.
 
 ## Uitvoeren
 
@@ -29,14 +29,6 @@ Selecteer daarna `.venv\Scripts\python.exe` als notebookkernel en voer de twee g
 
 - `RUN_DOWNLOAD=False` laat de bestaande dataset staan en voorkomt een nieuwe download.
 - `RUN_AUTOML=False` gebruikt de opgeslagen AutoML-resultaten en vermijdt een nieuwe lange AutoML-run.
-
-De webapp start je na de modeltraining met:
-
-```powershell
-uvicorn app.main:app --reload
-```
-
-Open vervolgens <http://127.0.0.1:8000>.
 
 ## Resultaten
 
@@ -59,9 +51,7 @@ data/                    raw, weer- en processed data
 src/                     cleaning, features, analyse, training en voorspelling
 models/                  getraind model en metadata
 reports/                 metrics en analyseresultaten
-app/                     FastAPI-backend en webinterface
 tests/                   automatische controles
-aws/                     SageMaker-code
 ```
 
 ## Methodiek en beperkingen

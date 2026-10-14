@@ -50,8 +50,6 @@ jobs:
       - name: Train official all-years model
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.official_data }}
         run: python -m src.models.train --max-rows 500000
-      - name: Verify API imports
-        run: python -c "from app.main import app; assert app.title"
       - uses: actions/upload-artifact@v4
         with:
           name: duration-model-${{ github.sha }}
