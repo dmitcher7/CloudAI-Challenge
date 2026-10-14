@@ -17,13 +17,20 @@ De notebooks `01_...` tot en met `07_...` in de hoofdmap `notebooks/` bevatten d
 
 ## Uitvoeren
 
-Gebruik Python 3.11 of 3.12 en open de map `Brent` als workspace.
+Gebruik Python 3.11 of 3.12 en open de map `Brent` als workspace. De dependencies
+zijn bewust vastgezet op `scikit-learn==1.4.2` en `numpy==1.26.4`, zodat het
+geserialiseerde model compatibel is met dezelfde runtime op AWS. Python 3.13 is
+niet geschikt voor deze combinatie.
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 ```
+
+Gebruik op AWS eveneens Python 3.11 of 3.12 en installeer hetzelfde
+`requirements.txt` voordat `models/duration_model.pkl` wordt geladen. Pickle-
+modellen van scikit-learn zijn niet gegarandeerd compatibel tussen versies.
 
 Selecteer daarna `.venv\Scripts\python.exe` als notebookkernel en voer de twee gecombineerde notebooks in bovenstaande volgorde uit.
 
