@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Voorspel de duur van een Citi Bike-rit bij vertrek." />
     <title>Green Wheels · Ritduur</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
       @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;600;700&display=swap');
       :root { --ink:#17201b; --paper:#f2f0e8; --acid:#c8ff54; --line:#c9cdc7; --muted:#647068; }
@@ -40,9 +41,16 @@
       .result small { color:var(--muted); line-height:1.5; }
       .result.error { border-color:#d64e3a; background:#fff0ed; }
       .hint { margin:0; color:var(--muted); font:12px "DM Mono",monospace; line-height:1.5; }
+      #map { height:300px; border:1px solid var(--ink); z-index:0; }
+      .picked { display:grid; grid-template-columns:auto 1fr; gap:6px 10px; font-size:13px; align-items:center; }
+      .picked b { font:600 11px "DM Mono",monospace; text-transform:uppercase; letter-spacing:.06em; }
+      .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; border:1px solid var(--ink); vertical-align:-1px; }
+      .tools { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+      .tools button { margin:0; padding:7px 12px; font:500 12px "DM Mono",monospace; background:#fff; color:var(--ink); display:inline-block; }
+      .legend { color:var(--muted); font:11px "DM Mono",monospace; }
       footer { position:relative; border-top:1px solid var(--line); max-width:1180px; margin:auto; padding:25px 32px; display:flex; justify-content:space-between; }
       footer a { color:inherit; }
-      @media(max-width:800px){ main{grid-template-columns:1fr;padding-top:50px}.facts{margin-top:30px}.card{box-shadow:7px 7px 0}.split{grid-template-columns:1fr}h1{font-size:58px} }
+      @media(max-width:800px){ main{grid-template-columns:1fr;padding:50px 16px 32px}.facts{margin-top:30px}.card{box-shadow:7px 7px 0;padding:20px}.split{grid-template-columns:1fr}h1{font-size:58px}#map{height:260px} }
     </style>
   </head>
   <body>
@@ -74,9 +82,21 @@
               <select id="member_casual"><option value="member">Member</option><option value="casual">Casual</option></select>
             </label>
           </div>
-          <label>Startstation<input required id="start_station" list="station-list" autocomplete="off" placeholder="typ een straatnaam, bv. W 21 St" /></label>
-          <label>Bestemming<input required id="end_station" list="station-list" autocomplete="off" placeholder="typ een straatnaam, bv. Broadway & E 14 St" /></label>
+          <label>Start en bestemming
+            <span class="hint">Klik op de kaart: eerst je start, dan je bestemming. Of zoek een station op naam.</span>
+            <input id="search" list="station-list" autocomplete="off" placeholder="zoek een station, bv. W 21 St & 6 Ave" />
+          </label>
           <datalist id="station-list"></datalist>
+          <div id="map" role="application" aria-label="Kaart met Citi Bike-stations"></div>
+          <div class="picked">
+            <b><span class="dot" style="background:#3f9a4d"></span>Start</b><span id="start_name">–</span>
+            <b><span class="dot" style="background:#e07a2a"></span>Bestemming</b><span id="end_name">–</span>
+          </div>
+          <div class="tools">
+            <span id="distance" class="legend"></span>
+            <span><button type="button" id="swap">⇄ wissel</button> <button type="button" id="clear">opnieuw</button></span>
+          </div>
+          <p class="legend"><span class="dot" style="background:#2f6f4f"></span>station met ritten in de trainingsdata · <span class="dot" style="background:#c9cdc7"></span>nieuw station (minder zekere schatting)</p>
           <p id="weather" class="hint">Het weer wordt bij de berekening opgehaald (Open-Meteo).</p>
           <button type="submit">Bereken ritduur <span>→</span></button>
         </form>
@@ -84,6 +104,7 @@
       </section>
     </main>
     <footer><a href="citi_bike_models.html">← Citi Bike-modellen</a><a id="docs" href="/docs">API-documentatie ↗</a></footer>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
       // Geserveerd door de API zelf -> zelfde adres. Lokaal geopend -> Oracle VM.
       // Overschrijven met ?api=http://localhost:8000
@@ -105,8 +126,47 @@
         })
         .catch(() => { $("health").textContent = "API offline"; });
 
-      // Stations: kiezen op naam; id en coördinaten komen uit de lijst van de API.
+      // Kaart met alle stations. Eén canvas (i.p.v. 2.400 losse elementen) houdt de kaart vlot; "tolerance" maakt
+      // de klikzone rond elk bolletje groter, zodat je ook op een gsm een station kan aantikken.
+      const COLORS = { known: "#2f6f4f", unknown: "#c9cdc7", start: "#3f9a4d", end: "#e07a2a" };
+      const map = L.map("map", { scrollWheelZoom: false, renderer: L.canvas({ tolerance: 8 }) }).setView([40.74, -73.98], 12);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 18, attribution: "&copy; OpenStreetMap-bijdragers",
+      }).addTo(map);
       const stationsByName = new Map();
+      const markers = new Map();
+      const picked = { start: null, end: null };
+      let line = null;
+
+      const baseStyle = (station) => ({ radius: 4, weight: 0, fillOpacity: .75,
+                                         fillColor: station.history ? COLORS.known : COLORS.unknown });
+      function kmBetween(a, b) {
+        const rad = (v) => v * Math.PI / 180;
+        const h = Math.sin(rad(b.lat - a.lat) / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lng - a.lng) / 2) ** 2;
+        return 2 * 6371.0088 * Math.asin(Math.sqrt(h));
+      }
+      function render() {
+        markers.forEach((marker, name) => marker.setStyle(baseStyle(stationsByName.get(name))));
+        for (const role of ["start", "end"]) {
+          if (picked[role]) markers.get(picked[role].name).setStyle({ radius: 9, weight: 2, color: "#17201b", fillOpacity: 1, fillColor: COLORS[role] }).bringToFront();
+        }
+        $("start_name").textContent = picked.start ? picked.start.name : "– klik een station op de kaart";
+        $("end_name").textContent = picked.end ? picked.end.name : (picked.start ? "– klik je bestemming" : "–");
+        if (line) { line.remove(); line = null; }
+        if (picked.start && picked.end) {
+          line = L.polyline([[picked.start.lat, picked.start.lng], [picked.end.lat, picked.end.lng]],
+                            { color: "#17201b", weight: 2, dashArray: "6 6" }).addTo(map);
+          $("distance").textContent = `${kmBetween(picked.start, picked.end).toFixed(2)} km in rechte lijn`;
+        } else {
+          $("distance").textContent = "";
+        }
+      }
+      function pick(station) {
+        if (!picked.start || picked.end) { picked.start = station; picked.end = null; }
+        else { picked.end = station; }
+        render();
+      }
+
       fetch(`${API_URL}/citi_bike/stations`)
         .then((response) => response.json())
         .then((stations) => {
@@ -116,11 +176,33 @@
             const option = document.createElement("option");
             option.value = station.name;
             list.appendChild(option);
+            const marker = L.circleMarker([station.lat, station.lng], baseStyle(station))
+              .bindTooltip(station.name, { direction: "top", offset: [0, -4] })
+              .on("click", () => pick(station))
+              .addTo(map);
+            markers.set(station.name, marker);
           });
-          $("start_station").value = "W 21 St & 6 Ave";
-          $("end_station").value = "Broadway & E 14 St";
+          // Voorbeeldrit, zodat "Bereken" meteen werkt.
+          picked.start = stationsByName.get("W 21 St & 6 Ave") || null;
+          picked.end = stationsByName.get("Broadway & E 14 St") || null;
+          render();
+          if (line) map.setView(line.getCenter(), 14);
         })
         .catch(() => { $("weather").textContent = "Stationslijst niet geladen."; });
+
+      $("search").addEventListener("change", () => {
+        const station = stationsByName.get($("search").value);
+        if (!station) return;
+        map.setView([station.lat, station.lng], Math.max(map.getZoom(), 15));
+        pick(station);
+        $("search").value = "";
+      });
+      $("swap").addEventListener("click", () => {
+        [picked.start, picked.end] = [picked.end, picked.start];
+        if (!picked.start) [picked.start, picked.end] = [picked.end, null];
+        render();
+      });
+      $("clear").addEventListener("click", () => { picked.start = picked.end = null; render(); });
 
       // Weer op het vertrekuur (Open-Meteo-voorspelling, tot ± 2 weken vooruit). Lukt het niet, dan gebruikt het model de mediaan.
       async function weatherAt(startedAt, lat, lng) {
@@ -144,9 +226,8 @@
         result.className = "result";
         result.innerHTML = "Berekenen…";
         try {
-          const start = stationsByName.get($("start_station").value);
-          const end = stationsByName.get($("end_station").value);
-          if (!start || !end) throw new Error("Kies een start- en eindstation uit de lijst.");
+          const { start, end } = picked;
+          if (!start || !end) throw new Error("Kies een start en een bestemming op de kaart.");
           const payload = {
             started_at: $("started_at").value,
             rideable_type: $("rideable_type").value,
