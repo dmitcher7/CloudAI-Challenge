@@ -27,6 +27,18 @@ In dit project analyseren en modelleren we twee complexe datasets rondom het the
 
 ---
 
+## ▶️ Notebooks uitvoeren
+Wilt u de notebooks zelf uitvoeren, dan raden we deze mappen aan:
+
+| Onderdeel | Map | Notebooks |
+|---|---|---|
+| Mushrooms | [`mushrooms/Cisse/`](mushrooms/Cisse/) | alle notebooks |
+| Citi Bike: vraag per zone | [`citi_bike/Kobe/Final/`](citi_bike/Kobe/Final/) | de 2 notebooks (alles in één verhaal) |
+| | of [`citi_bike/Kobe/`](citi_bike/Kobe/) | alle werknotebooks |
+| Citi Bike: ritduur | [`citi_bike/Brent/notebooks/`](citi_bike/Brent/notebooks/) | alle notebooks |
+
+---
+
 ## 📁 Mappenstructuur & Werkwijze
 Om efficiënt samen te werken via GitHub en merge-conflicten te voorkomen, hebben we een persoonsgebonden structuur gehanteerd:
 * **Individuele mappen (`Brent/`, `Cisse/`, `Dimi/`, `Kobe/`):** Elk teamlid heeft zijn eigen omgeving om te experimenteren met EDA, opschonen, visualisaties en ML modellen. 
