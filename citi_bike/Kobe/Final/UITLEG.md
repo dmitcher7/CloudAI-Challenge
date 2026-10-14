@@ -147,6 +147,7 @@ Resultaat: **99,97%** van de ritten is bruikbaar als vertrek.
 - **Kommagetal:** sommige CSV's bewaarden de id als getal. Daardoor werd `3423.10` → `3423.1` en `119` → `119.0`. In 2018–2019 gaat het om ± 40% van de ritten, daarna om hooguit enkele procenten. De functie `normalize_station_id` herstelt dat, afhankelijk van de periode (vóór of na februari 2021); in totaal 17,3 miljoen ritten.
 - **Twee stelsels:** tot 2021 gehele getallen (`72`), daarna codes met een punt (`6926.01`). Hetzelfde station kreeg een nieuwe id.
 - **Keuze:** stations zoveel mogelijk via hun **locatie** behandelen. Een station krijgt de zone van zijn coördinaten, en actieve stations tellen we als unieke locaties (op ± 10 m).
+- **Wat overblijft:** 29 behouden id's hebben een ongewone vorm (0,05% van de vertrekken): varianten met een achtervoegsel (`5303.06_`, `…_Pillar`) en nieuwe id's die in 2019–2021 hun eindnul verloren (`7323.1`), toen beide systemen door elkaar liepen. Voor de zones maakt dat niets uit (zone = locatie); bij het tellen van actieve stations hooguit enkele dubbeltellingen per maand. We vermelden het als bekende kleine onvolkomenheid.
 - **Bewijs:** als we id's tellen, staan in december 2019 **124 stations dubbel**. Enkele ritten in het bestand van 2020 begonnen in december 2019 en gebruiken al de nieuwe id.
 
 ### 4.8 Welke stations tellen mee?
