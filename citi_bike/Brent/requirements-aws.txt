@@ -1,4 +1,0 @@
-# Install only when running the shared AWS/SageMaker training workflow.
-# The local API and CI do not need the SageMaker SDK.
-boto3==1.35.96
-sagemaker==2.237.3
