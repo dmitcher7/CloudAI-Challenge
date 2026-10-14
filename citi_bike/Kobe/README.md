@@ -25,7 +25,7 @@ Wie het project in twee notebooks wil lezen, begint in [Final/](Final/):
 
 Een uitgebreide uitleg van alles wat gebruikt is (data, cleaning, technieken, toetsen, modellen, deployment, tools, begrippenlijst en oefenvragen), met grafieken, staat in [Final/UITLEG.md](Final/UITLEG.md).
 
-`02` gebruikt standaard de opgeslagen zoekresultaten (`RUN_SEARCHES = False`, ± 1 uur); met `RUN_SEARCHES = True` worden ook alle zoektochten opnieuw uitgevoerd (enkele uren). De werknotebooks hieronder bevatten dezelfde stappen in meer detail.
+Beide notebooks zijn **zelfstandig**: alle code staat erin (ze hebben `citibike.py` niet nodig). `01` maakt ook de tabellen voor de studie op 2024. `02` bevat alles wat in de werknotebooks onderzocht is; de resultaten van de zoektochten worden bewaard in `models/searches/`. Met `RUN_SEARCHES = False` (standaard) hergebruikt `02` die resultaten (± 1,5 uur), met `RUN_SEARCHES = True` doet het alle zoektochten opnieuw (± 4 uur, met PyCaret in de Python 3.11-omgeving). De werknotebooks hieronder zijn de oorspronkelijke stappen; hun inhoud zit volledig in de map `Final/`.
 
 ## Werknotebooks (in volgorde uitvoeren)
 

@@ -1,0 +1,4 @@
+model,cv_mae_getuned
+ExtraTreesRegressor,26.6368
+RandomForestRegressor,27.5106
+LGBMRegressor,29.3975
