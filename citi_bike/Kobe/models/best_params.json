@@ -1,5 +1,5 @@
 {
-  "source": "08_hgb_all_data (opnieuw getuned, backtest 3 folds)",
+  "source": "Final/02_analyse_en_modellen (opnieuw getuned, backtest 3 folds)",
   "params": {
     "l2_regularization": 0.004809,
     "learning_rate": 0.022801,

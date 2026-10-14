@@ -23,6 +23,8 @@ __pycache__/
 # ...en de kleine, voorbereide Citi Bike-modeltabel (2,3 MB): modellen hertrainen zonder 8,7 GB te downloaden
 !citi_bike/Kobe/data/model_table.parquet
 !citi_bike/Kobe/data/2024/model_table.parquet
+# ...en de bewaarde PyCaret-voorspellingen (0,6 MB), zodat Final/02 zonder PyCaret kan draaien
+!citi_bike/Kobe/models/searches/*.parquet
 # Tussenresultaten per bronbestand van 01_download (worden opnieuw gemaakt)
 citi_bike/Kobe/data/_*/
 *.h5

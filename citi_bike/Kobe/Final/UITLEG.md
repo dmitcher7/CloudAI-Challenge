@@ -3,7 +3,9 @@
 Dit document legt **alles** uit wat in het Citi Bike-deel van het project gebruikt is: de data, elke cleaningstap, elke techniek, elke statistische toets, elk model, de deployment en de tools. Bij elk onderdeel staat **wat** het is, **waarom** we het gebruikten en **wat** het opleverde. De cijfers komen uit de uitgevoerde notebooks in deze map:
 
 - [`01_cleaning.ipynb`](01_cleaning.ipynb): van de ruwe bestanden naar de modeltabel;
-- [`02_analyse_en_modellen.ipynb`](02_analyse_en_modellen.ipynb): EDA, hypotheses, modellen, foutenanalyse en deployment.
+- [`02_analyse_en_modellen.ipynb`](02_analyse_en_modellen.ipynb): EDA, hypotheses, alle modellen die we probeerden, foutenanalyse en deployment.
+
+**Wat je nodig hebt.** De twee notebooks zijn zelfstandig: alle code staat erin, er is geen ander Python-bestand nodig. Notebook 1 haalt de ruwe data zelf op (32,5 GB) en schrijft de tabellen waarmee notebook 2 werkt. Wie deze uitleg doorgeeft, geeft ook de map `img/` mee: daar staan de grafieken en schema's.
 
 ## Inhoud
 
@@ -48,24 +50,9 @@ Het model staat in een API op een Oracle-server, met een webpagina waar je een z
 
 ## 2. Het geheel in één schema
 
-```mermaid
-flowchart LR
-    A[S3-bucket Citi Bike<br/>44 zip-bestanden, 32,5 GB] --> B[01_cleaning<br/>downloaden, ontdubbelen,<br/>samenvatten per station per uur]
-    W[Open-Meteo<br/>uurlijks weer] --> B
-    B --> C[(model_table.parquet<br/>2,8 miljoen zone-uren)]
-    C --> D[02_analyse_en_modellen<br/>EDA, hypotheses,<br/>modelselectie, tuning]
-    D --> P[models/best_params.json]
-    P --> T[train.py<br/>meten + kwaliteitscontrole<br/>+ hertrainen op alles]
-    C --> T
-    T --> M[deploy/citi_bike_demand/model.pkl]
-    M --> G[GitHub: merge naar main]
-    G --> H[GitHub Actions<br/>deploy-api.yml]
-    H --> V[Oracle VM<br/>FastAPI + uvicorn]
-    V --> F[Webpagina<br/>citi_bike_demand.html]
-    W -.weersvoorspelling.-> F
-```
+![Het geheel](img/schema_geheel.png)
 
-Het werk zit in twee notebooks. De verwerkingscode staat in één bestand, [`../citibike.py`](../citibike.py). Zo doen de notebooks, `train.py` en de API exact hetzelfde met de data.
+Het werk zit in twee notebooks, met alle code erin: elke functie staat in de sectie waar ze uitgelegd wordt. In de repository staat dezelfde code ook in `citibike.py`, voor het script `train.py` en de werknotebooks; de functie die de kenmerken berekent (`make_features`) staat bovendien in de API, en een test (`test_features.py`) controleert dat beide versies hetzelfde doen.
 
 ---
 
@@ -111,11 +98,13 @@ De zip's van **2013** en **2018** bevatten elke maand twee keer: één keer als 
 **Keuze:** per maand één versie houden. De functie `select_csvs` kiest de versie in de diepste map, zoals in alle andere jaren. Zo zijn 21 dubbele bestanden weggelaten. Zonder die stap zouden 2013 en 2018 dubbel tellen.
 
 ### 4.3 Drie generaties kolomnamen
-| Periode | Kolommen (begin) |
-|---|---|
-| 2013–2019 | `tripduration, starttime, stoptime, start station id, …, usertype, birth year, gender` |
-| sommige bestanden 2016–2017 | `Trip Duration, Start Time, Stop Time, …` |
-| vanaf 2020 | `ride_id, rideable_type, started_at, ended_at, …, member_casual` |
+We lazen de kolomnamen van alle 426 CSV's:
+
+| Periode | Kolommen (begin) | CSV's |
+|---|---|---|
+| 2013–2019 | `tripduration, starttime, stoptime, start station id, …, usertype, birth year, gender` | 138 |
+| sommige bestanden 2016–2017 | `Trip Duration, Start Time, Stop Time, …` | 8 |
+| vanaf 2020 | `ride_id, rideable_type, started_at, ended_at, …, member_casual` | 280 |
 
 **Keuze:** alles omzetten naar het schema van vandaag (`standardize_columns`):
 - `starttime` en `Start Time` worden `started_at`;
@@ -123,7 +112,7 @@ De zip's van **2013** en **2018** bevatten elke maand twee keer: één keer als 
 - wat vroeger niet bestond, wordt leeg (`ride_id`) of `unknown` (`rideable_type`).
 
 ### 4.4 Drie datumnotaties
-`2013-06-01 00:00:01` (ISO), `10/1/2014 00:00:27` en `1/1/2015 0:01`. In 2014–2016 wisselt de notatie zelfs per bestand.
+`2013-06-01 00:00:01` (ISO), `10/1/2014 00:00:27` en `1/1/2015 0:01`. In 2014–2016 wisselt de notatie zelfs van CSV tot CSV (2015: 4 CSV's zonder seconden, 12 met), maar binnen één CSV is ze vast.
 
 **Keuze:** per stuk van 500.000 rijen de eerste notatie nemen die (bijna) alles kan lezen.
 - **Waarom niet per rij laten raden?** Dat is tientallen keren trager en kan dag en maand verwisselen.
@@ -141,19 +130,21 @@ Het resultaat wordt per bronbestand weggeschreven als **Parquet**, een compact k
 ### 4.6 Wat telt als een vertrek?
 | Vaststelling | Aantal | Keuze | Waarom |
 |---|---|---|---|
-| geen startstation (en dus geen locatie) | ± 92.000 | weg | geen zone te bepalen |
-| geen eindstation | | behouden | de fiets is wél vertrokken |
+| geen startstation (en bijna altijd ook geen locatie) | 92.077 (0,03%) | weg | geen zone te bepalen |
+| geen eindstation | ± 0,2% per jaar | behouden | de fiets is wél vertrokken. Vanaf 2022 zijn het vooral e-bikes (57–93%, tegenover 39–72% van alle ritten) die niet in een station werden teruggezet, met een veel langere duur |
 | startlocatie buiten NYC | 256 | weg | foute coördinaten |
-| negatieve ritduur | ± 2.000, telkens in november | behouden | klokwissel: een rit van 1:50 (zomertijd) tot 1:10 (wintertijd) lijkt negatief |
-| rit langer dan 24 uur | ± 158.000 | behouden | is nog altijd een vertrek |
-| "dubbele" rijen (2013–2017) | ± 56.000 | behouden | geen ritnummer, soms tijd tot op de minuut: groepsritten zien er identiek uit |
+| negatieve ritduur | 1.962, **alleen in november** | behouden | klokwissel: in november 2024 starten alle 319 zulke ritten op 3 november tussen 1u18 en 2u. Een rit van 1:50 (zomertijd) tot 1:10 (wintertijd) lijkt negatief |
+| rit langer dan 24 uur | 157.541 | behouden | is nog altijd een vertrek |
+| rit korter dan 1 minuut | 3 in de steekproef van 657.661 | behouden | Citi Bike haalt valse starts zelf al uit de data |
+| "dubbele" rijen (2013–2017) | ± 56.000 (max. 0,4%, 2015) | behouden | geen ritnummer, soms tijd tot op de minuut: groepsritten zien er identiek uit. Vanaf 2020, met `ride_id`, zijn er 0 duplicaten |
+| `ride_id` ontbreekt | alle 91,9 miljoen ritten vóór 2020 | niets | de kolom bestond toen niet; voor het tellen niet nodig |
 
-**Waarom geen filter op ritduur?** Wij tellen **vertrekken**: elke rit telt één keer, hoe lang ze ook duurt. Bij een model dat de *ritduur* voorspelt, zou je extreme ritten wél moeten aanpakken.
+**Waarom geen filter op ritduur?** Wij tellen **vertrekken**: elke rit telt één keer, hoe lang ze ook duurt. Bij een model dat de *ritduur* voorspelt, zou je extreme ritten wél moeten aanpakken. De ritduur is sterk rechtsscheef: mediaan ± 10 minuten, 99% korter dan 68 minuten, maar uitschieters tot een jaar.
 
 Resultaat: **99,97%** van de ritten is bruikbaar als vertrek.
 
 ### 4.7 Station-id's
-- **Kommagetal:** sommige CSV's bewaarden de id als getal. Daardoor werd `3423.10` → `3423.1` en `119` → `119.0`. De functie `normalize_station_id` herstelt dat, afhankelijk van de periode.
+- **Kommagetal:** sommige CSV's bewaarden de id als getal. Daardoor werd `3423.10` → `3423.1` en `119` → `119.0`. In 2018–2019 gaat het om ± 40% van de ritten, daarna om hooguit enkele procenten. De functie `normalize_station_id` herstelt dat, afhankelijk van de periode (vóór of na februari 2021); in totaal 17,3 miljoen ritten.
 - **Twee stelsels:** tot 2021 gehele getallen (`72`), daarna codes met een punt (`6926.01`). Hetzelfde station kreeg een nieuwe id.
 - **Keuze:** stations zoveel mogelijk via hun **locatie** behandelen. Een station krijgt de zone van zijn coördinaten, en actieve stations tellen we als unieke locaties (op ± 10 m).
 - **Bewijs:** als we id's tellen, staan in december 2019 **124 stations dubbel**. Enkele ritten in het bestand van 2020 begonnen in december 2019 en gebruiken al de nieuwe id.
@@ -163,14 +154,22 @@ Weggelaten: **interne locaties** (werkplaatsen, depots, laadkades, testlocaties 
 
 **Waarom:** een fiets die uit een werkplaats "vertrekt", is onderhoud of herverdeling, geen klantenvraag.
 
-### 4.9 Dagen waarop het systeem dicht was
+### 4.9 Categorische kolommen
+`rideable_type` (klassiek / elektrisch) en `member_casual` worden het type `category`: minder geheugen, en duidelijk dat het geen vrije tekst is. Ze zijn **geen kenmerk** voor het model (bij een voorspelling weet je niet wie er zal fietsen), maar we tellen per zone-uur wel hoeveel vertrekken van members en met e-bikes waren, om het gedrag te begrijpen: e-bikes van 0% (vóór 2020) naar ± 72%, members zakten tijdens corona van 87% naar 73%.
+
+### 4.10 Het weer: volledig?
+Het weer van Open-Meteo is volledig: alle 116.880 uren van juni 2013 tot september 2026, zonder ontbrekende waarden of dubbele uren (na de correctie voor de zomertijd).
+
+### 4.11 Dagen waarop het systeem dicht was, en ontbrekende data
 We vergelijken elke dag met de mediaan van de 4 weken eromheen. **12 dagen** liggen onder 3% van normaal: allemaal sneeuwstormen waarop Citi Bike het systeem stillegde (o.a. 23–26 januari 2016, 14–16 maart 2017, 1–2 februari 2021, 23 februari 2026).
 
 **Keuze:** die dagen weglaten.
 - **Waarom:** er was geen aanbod, dus "0 vertrekken" zegt niets over de vraag.
 - **Wat blijft:** echt rustige dagen (zware regen, sneeuw, Kerstmis). Die moet het model wél leren.
 
-### 4.10 Zones, aanbod, rooster, weer en split
+**Ontbreken er bestanden of maanden?** Nee: elke maand is aanwezig, en de enige dagen zonder ritten zijn de gesloten dagen. Maanden die veel lager liggen dan een jaar eerder (februari 2026: −40%, februari 2021: −45%) zijn echte lage vraag door sneeuw en sluitingen, geen gaten.
+
+### 4.12 Zones, aanbod, rooster, weer en split
 | Stap | Keuze | Waarom |
 |---|---|---|
 | zones | 30 zones met KMeans (§5) op het netwerk van de laatste 12 maanden | per station is er te veel toeval; het model voorspelt de stad van vandaag |
@@ -181,6 +180,22 @@ We vergelijken elke dag met de mediaan van de 4 weken eromheen. **12 dagen** lig
 | split | test = laatste 12 maanden | meten zoals het model gebruikt wordt (§8) |
 
 **Controle:** de som van alle vertrekken in de tabel is exact gelijk aan alle vertrekken van de publieke stations, buiten de 12 gesloten dagen. Er gaat niets verloren.
+
+### 4.13 Is de data verbeterd?
+| | Ruw | Na cleaning |
+|---|---|---|
+| rijen | 328.800.493 ritten | 2.818.992 zone-uren (incl. 0) |
+| kolomschema's / datumnotaties | 3 / 3 | 1 / 1 |
+| dubbele CSV-versies | 21 | 0 |
+| ritten zonder startlocatie | 92.077 | 0 |
+| station-id's als getal opgeslagen | 17.320.781 | 0 |
+| vertrekken van interne/JC-HB-stations | 18.813 | 0 |
+| gesloten dagen | 12 | 0 |
+| uren zonder vertrek | ontbreken | 117.517 (als 0) |
+| weer | niet aanwezig | elk uur, 6 variabelen |
+
+### 4.14 Dezelfde stappen voor de studie op 2024
+De modelselectie (§9) gebeurt eerst op één jaar, 2024. Notebook 1 maakt daarvoor een aparte tabel met dezelfde cleaning, maar met zones gefit op de stations **van 2024**, zonder `year` en `active_stations` (geen groei binnen één jaar), en met als testset **de laatste 7 dagen van elke maand** (§8.2). Resultaat: 263.520 zone-uren (30 zones × 8.784 uren), 44,3 miljoen vertrekken, 0,3% zonder vertrek.
 
 ---
 
@@ -199,13 +214,15 @@ We gebruikten KMeans twee keer.
 
 | k | silhouette | mediaan vertrekken per zone-uur | rustigste zone |
 |---|---|---|---|
+| 5 | 0,35 | 892 | 383 |
 | 10 | 0,35 | 397 | 163 |
 | 20 | 0,34 | 229 | 35 |
-| **30** | **0,34** | **152** | **32** |
+| **30** | **0,32** | **150** | **32** |
 | 40 | 0,35 | 101 | 19 |
+| 50 | 0,34 | 92 | 11 |
 | 75 | 0,32 | 60 | 11 |
 
-- **Inertia:** de totale afstand van de punten tot hun centrum. Ze daalt steil tot ± 30 zones en daarna nog maar langzaam (de "elleboog").
+- **Inertia:** de totale (gekwadrateerde) afstand van de punten tot hun centrum. Ze daalt steil tot ± 20 à 30 zones en daarna nog maar langzaam (de "elleboog").
 - **Silhouette:** meet hoe goed een punt bij zijn eigen groep past in vergelijking met de buurgroep (−1 tot 1). Hier is ze voor elke k ongeveer gelijk: de stad is één doorlopend netwerk zonder natuurlijke grenzen. Ze helpt dus niet bij de keuze.
 - **De doorslag:** met 30 zones heeft zelfs de rustigste zone nog ± 32 vertrekken per uur. Bij meer zones domineert het toeval.
 
@@ -213,6 +230,8 @@ We gebruikten KMeans twee keer.
 
 ### 5.2 Stationsprofielen: stations groeperen op gedrag
 - **Invoer:** per station het **aandeel** van zijn vertrekken per uur, apart voor weekdagen en weekend (48 getallen die samen 1 zijn). Zo vergelijken we de vorm van het dagpatroon, los van hoe druk een station is.
+- **Stations:** de ± 2.000 stations met minstens 2.000 vertrekken in 2024 (anders is het profiel te ruizig).
+- **Hoeveel profielen?** De inertia daalt het sterkst tot 4 clusters; met 4 krijgen we profielen die je ook kan benoemen.
 - **Resultaat:** vier soorten stations, zonder dat we het model iets over buurten vertelden.
 
 ![Stationsprofielen](img/stationsprofielen.png)
@@ -248,14 +267,16 @@ We gebruikten KMeans twee keer.
 ### 6.3 Dagritme
 ![Dagritme](img/dagritme_2024.png)
 
-- **Weekdagen:** twee spitsen (8u en 17u), vooral bij members.
-- **Weekend:** één brede bult.
-- **Gevolg:** het model moet uur en weekdag/weekend **combineren**.
+- **Weekdagen:** twee spitsen (8u en 17u), vooral bij members. Casual riders fietsen vooral in de namiddag.
+- **Weekend:** één brede bult van 10u tot 19u.
+- **Regen:** bij hetzelfde uur en daltype ligt de curve bij regen (≥ 0,5 mm/u) duidelijk lager: op weekdagen ± een derde, in het weekend meer dan de helft. Vrijetijdsfietsen is gevoeliger voor regen dan woon-werkverkeer.
+- **Gevolg:** het model moet uur en weekdag/weekend **combineren**, en het weer kennen.
 
 ### 6.4 De target
 ![Target](img/target_verdeling.png)
 
 - **Wat voor variabele:** een **telling** (0, 1, 2, …), rechtsscheef.
+- **Nullen:** in 2024 heeft maar 0,3% van de zone-uren 0 vertrekken, over alle jaren 4% (de kleine netwerken van de eerste jaren). Ze expliciet als 0 opnemen is dus correct.
 - **Overdispersie:** de variantie is veel groter dan het gemiddelde (gemiddeld 117, variantie ± 23.600). Bij een zuivere Poisson-verdeling zijn die gelijk; hier verschilt de verwachting sterk per zone en uur.
 - **Gevolg:** we gebruiken modellen met een **Poisson-verliesfunctie** (§9.1).
 
@@ -280,16 +301,25 @@ Vóór het modelleren toetsten we of er een **echt** patroon is, en of het **gro
 **Toets 2: Poisson-regressie met vaste effecten.**
 - **Het model:** `log(vraag) = effect(dag) + effect(uur × daltype) + β · nat`. Door een apart effect per **kalenderdag** vergelijken we een nat uur met droge uren van dezelfde dag.
 - **Robuuste standaardfouten, geclusterd per dag:** uren van dezelfde dag hangen samen. Gewone standaardfouten zouden dan te klein zijn, en de p-waarde te optimistisch.
+- **Technisch detail:** het daltype zit al in het dag-effect (elke dag is een weekdag of een weekenddag). Daarom coderen we het uur apart binnen weekdagen en binnen weekenddagen, anders is het model niet eenduidig bepaald.
 - **Resultaat:** een nat uur kost **27%** van de vertrekken (95%-BI −32% tot −21%).
-- **Dosis-effect:** ≤ 0,5 mm −11%, 0,5–2 mm −25%, 2–5 mm −34%.
+- **Waarom −27% en niet −47% zoals in toets 1?** Toets 1 vergelijkt met droge uren van *andere* dagen en meet dus ook "het is een regendag" (wie 's ochtends regen ziet, laat de fiets de hele dag staan). Toets 2 meet alleen het effect van dit ene natte uur.
+- **Dosis-effect:** ≤ 0,5 mm −11%, 0,5–2 mm −25%, 2–5 mm −34%; boven 5 mm −21%, maar dat zijn maar 42 uren met een breed interval (korte onweersbuien). Het effect is dus niet lineair in de hoeveelheid regen.
 
 ### 7.2 H2: weekdagen hebben een ander dagritme dan het weekend
 **Chi-kwadraattoets op homogeniteit:** we vergelijken de verdeling over 24 uren tussen weekdagen en weekend. Met 44 miljoen ritten is p ≈ 0, dus we kijken vooral naar de effectgrootte.
 - **Cramér's V** = 0,20: de sterkte van het verband (0 = geen, 1 = volledig), hier klein tot middelmatig.
 - **Strenger, met de dag als eenheid:** het aandeel van de ochtendspits (7–9u) is op weekdagen 17,9% en in het weekend 8,3%.
-- **Mann–Whitney U-toets:** een niet-parametrische vergelijking van twee onafhankelijke groepen (262 weekdagen tegen 104 weekenddagen). Resultaat: p ≈ 10⁻⁴⁵.
+- **Mann–Whitney U-toets:** een niet-parametrische vergelijking van twee onafhankelijke groepen (262 weekdagen tegen 104 weekenddagen). Resultaat: p ≈ 10⁻⁴⁵. Het verschil van 9,7 procentpunt heeft een bootstrap-interval van 9,2 tot 10,3.
 
-### 7.3 p-waarde en effectgrootte
+### 7.3 Hoeveel verklaren kalender en weer samen?
+Twee eenvoudige Poisson-modellen op het stadstotaal per uur. De maat is het aandeel van de **deviance** dat het model verklaart (zoals R², maar voor tellingen):
+- alleen *uur × daltype + maand*: **89%**;
+- met het weer erbij: **92,5%**.
+
+De kalender bepaalt het grootste deel, maar het weer maakt het verschil tussen een gewone en een "slechte" dag: precies de dagen waarop een planner het model nodig heeft.
+
+### 7.4 p-waarde en effectgrootte
 De **p-waarde** zegt hoe verrassend het resultaat is als H₀ waar zou zijn. Met miljoenen rijen wordt elk verschil "significant". De **effectgrootte** (−27%, Cramér's V, het verschil in procentpunt) zegt of het verschil ertoe doet. Daarom rapporteren we altijd beide, samen met een **betrouwbaarheidsinterval** (BI): het bereik waarin het echte effect met 95% zekerheid ligt.
 
 ---
@@ -309,23 +339,7 @@ De **p-waarde** zegt hoe verrassend het resultaat is als H₀ waar zou zijn. Met
 ### 8.3 Studie op alle data: backtesting
 Met 13 jaar is er een sterke **trend**. Willekeurige weken zouden het model voor 2019 laten leren van 2020. Daarom gebruiken we **backtesting** (AWS-hoofdstuk 4): altijd trainen op het verleden en valideren op de toekomst.
 
-```mermaid
-gantt
-    dateFormat YYYY-MM
-    axisFormat %Y
-    section Fold 0
-    train      :2013-06, 2022-10
-    valideer   :crit, 2022-10, 2023-10
-    section Fold 1
-    train      :2013-06, 2023-10
-    valideer   :crit, 2023-10, 2024-10
-    section Fold 2
-    train      :2013-06, 2024-10
-    valideer   :crit, 2024-10, 2025-10
-    section Eindtest
-    train      :2013-06, 2025-10
-    test       :active, 2025-10, 2026-10
-```
+![Backtesting](img/schema_backtesting.png)
 
 ### 8.4 Metrics
 | Metric | Wat | Waarom |
@@ -358,7 +372,12 @@ Bij een gewone regressie minimaliseer je de gekwadrateerde fout. Bij **Poisson-v
 #### Baseline: gemiddelde per zone × uur × weekend
 - **Wat:** voorspel het gemiddelde uit de trainset voor dezelfde combinatie.
 - **Waarom:** een model is pas nuttig als het beter doet dan wat een planner in Excel zou doen.
-- **Resultaat:** MAE 59,3, R² 0,72. Globaal gemiddelde 138, per zone 117: het dagritme per plaats is de grootste informatiebron.
+- **Resultaat:** MAE 59,3, R² 0,72. Globaal gemiddelde 138, per zone 117: het dagritme per plaats is de grootste informatiebron. De fout verschilt per fold (52 tot 70): daarom vergelijken we modellen altijd op dezelfde folds.
+
+#### Snel eerste model: gradient boosting met standaardinstellingen
+- **Wat:** hetzelfde type model dat uiteindelijk won (zie verder), zonder te tunen.
+- **Waarom:** zo kon de deployment (API en webpagina) al gebouwd worden terwijl we verder tunden.
+- **Resultaat:** MAE 30,9 (CV 27,6), R² 0,90: de fout halveert opnieuw tegenover de baseline, in elke fold.
 
 #### Poisson-GLM (generalized linear model)
 - **Wat:** `log(vraag) = som van effecten`, met:
@@ -367,6 +386,8 @@ Bij een gewone regressie minimaliseer je de gekwadrateerde fout. Bij **Poisson-v
   - `log(1 + neerslag)`;
   - **L2-regularisatie** (`alpha`): een straf op grote coëfficiënten.
 - **Waarom:** uitlegbaar. Elk effect is een factor.
+- **Additief of met interactie?** Een lineair model vindt geen interacties zelf. Zonder de interactie zone × uur × weekend: CV-MAE 37,3; mét: 30,5, in elke fold. Dat bevestigt de stationsprofielen (§5.2).
+- **Regularisatie (grid search):** `alpha` van 10⁻⁶ tot 10⁻² geprobeerd. Tot 10⁻⁴ maakt het niets uit (30,45), bij 10⁻² wordt het slechter (34,5): met 200.000 rijen en ± 1.500 coëfficiënten is er weinig risico op overfitting.
 - **Resultaat:** MAE 33,2. Wat het model leerde:
   - regen: −30% per mm/u;
   - feestdag: −17%;
@@ -383,16 +404,23 @@ Bij een gewone regressie minimaliseer je de gekwadrateerde fout. Bij **Poisson-v
   - `max_features`: aandeel kenmerken per split;
   - `max_depth`: maximale diepte;
   - `max_samples`: grootte van de steekproef per boom.
-- **Resultaat:** MAE 30,3. Een eerste zoekronde maakte het model **slechter** dan de standaard (§13).
-- **Waarom niet verder:** minder goed dan boosting, en 300 diepe bomen geven een groot model.
+- **Zone als getal:** de random forest van scikit-learn kent geen categorieën. De zones zijn genummerd van druk naar rustig, dus een split "zone ≤ 5" is toch zinvol.
+- **Twee zoekrondes (randomized search):**
+  - ronde 1, breed (grote bladeren, 30–100% van de kenmerken per split): beste CV-MAE 30,9, **slechter** dan de standaard (28,1). De standaard gebruikt álle kenmerken en bladeren van 1 uur, en precies dat gebied lag buiten de zoekruimte. De slechtste combinaties gebruikten maar 30% van de kenmerken per split (MAE 42): met 9 kenmerken, waarvan uur, zone en temperatuur het meeste werk doen, is een split zonder uur of zone vaak slecht;
+  - ronde 2, rond de standaard: CV-MAE 27,4, in elke fold beter dan de standaard. De echte verbetering: iets kleinere bootstrap-steekproeven per boom (± 72%), wat de bomen diverser maakt.
+- **Resultaat:** MAE 30,3, R² 0,90.
+- **Impurity importance** (ingebouwd in bomen): uur 40%, zone 34%, temperatuur 14%, neerslag maar 2%. Dat laatste is misleidend: het regent zelden, en deze maat telt hoeveel een kenmerk *gemiddeld over alle splits* helpt. Daarom meten we ook met permutation importance (§11.3).
+- **Waarom niet verder:** minder goed dan boosting, en 300 diepe bomen met bladeren van 1 uur geven een groot, traag model.
 
 #### PyCaret (AutoML)
-- **Wat:** probeert automatisch een reeks modellen met dezelfde folds en tunet de beste drie.
+- **Wat:** probeert automatisch een reeks modellen met dezelfde split en dezelfde week-folds (`fold_strategy="groupkfold"`) en tunet de beste drie (`tune_model`, 15 combinaties, `choose_better=True`).
 - **Waarom:** een onafhankelijke controle van onze eigen keuzes.
+- **Welke modellen:** boosting (LightGBM, XGBoost, GradientBoosting), bagging (random forest, Extra Trees), één beslissingsboom, lineaire modellen en een dummy. **Niet**: kernelmethodes (SVM, kernel ridge), Gaussian process en k-nearest neighbours, die kwadratisch of per voorspelling over alle trainrijen schalen, en varianten van lineaire regressie die niets toevoegen.
 - **Resultaat:**
-  - beste model Extra Trees (*extremely randomized trees*: random forest met willekeurige splitpunten), MAE 30,6;
-  - lineaire modellen ± 97, omdat ze de ruwe kolommen krijgen, zonder interacties;
-  - LightGBM en XGBoost (andere boosting-bibliotheken) deden het minder goed dan ons eigen model.
+  - beste model Extra Trees (*extremely randomized trees*: random forest met willekeurige splitpunten): CV 27,0 → getuned 26,6, test MAE 30,6;
+  - random forest 28,1 → 27,5, LightGBM 30,7 → 29,4, XGBoost 31,2;
+  - lineaire modellen ± 97 (R² 0,46), omdat ze de ruwe kolommen krijgen: het uur als één getal, zonder interacties. Ons eigen GLM haalde 30,5: het verschil is volledig **feature engineering**.
+- **Waarom doet onze gradient boosting het beter dan LightGBM?** Poisson-verlies, de zone als echte categorie, en meer bomen met een kleinere learning rate.
 - **Waarom niet verder:** het vond geen beter model, maar bevestigde de keuze voor bomen.
 
 #### Gradient boosting (gekozen)
@@ -405,23 +433,33 @@ Bij een gewone regressie minimaliseer je de gekwadrateerde fout. Bij **Poisson-v
   - `l2_regularization`: straf op grote bladwaarden;
   - `categorical_features`: de zone als echte categorie;
   - bij veel data stopt het model vanzelf als extra bomen niet meer helpen op 10% interne validatie (**early stopping**).
+- **Tuning:** randomized search, 25 combinaties × 5 folds. De beste combinaties delen een kleine learning rate (0,02–0,07) en grote bomen (75–125 bladeren); de slechtste hebben een grote learning rate (te grote stappen) of kleine bomen (te weinig ruimte voor interacties). De top 8 ligt binnen 0,4 van elkaar, minder dan de spreiding over de folds.
 - **Resultaat:**
-  - standaard: MAE 30,9;
-  - **getuned: MAE 29,0, R² 0,906**;
-  - beter dan elk ander model in **alle 5 folds**. Bootstrap tegenover random forest: +1,3 (95%-BI 0,2 tot 2,5).
+  - standaard: MAE 30,9 (CV 27,6);
+  - **getuned: MAE 29,0 (CV 24,9), R² 0,906**, in alle 5 folds beter dan de standaard;
+  - beter dan elk ander model in **alle 5 folds**. Bootstrap tegenover random forest: +1,3 (95%-BI 0,2 tot 2,5), tegenover PyCaret +1,5 (0,3 tot 3,0).
 - **Waarom gekozen:** de beste fout, een klein model (5–7 MB), en alleen scikit-learn nodig op de server.
 
 #### Experiment: lags
 - **Wat:** het aantal vertrekken 24 uur en 168 uur eerder als kenmerk. Tijdreeksen hebben autocorrelatie.
-- **Resultaat:** op de testset beter (26,9), maar in de cross-validatie in **elke** fold slechter.
-- **Waarom niet verder:** de winst is niet betrouwbaar. Bovendien kent een gebruiker op de webpagina de vertrekken van gisteren niet; daarvoor zou de API een live koppeling met Citi Bike nodig hebben.
+- **Resultaat:** op de testset beter (26,9 tegenover 29,0), maar in de cross-validatie slechter (27,5 tegenover 24,9), en in **geen enkele** van de 5 folds beter.
+- **Waarom niet verder:** de winst is niet betrouwbaar (een **misleidende testverbetering**). Bovendien kent een gebruiker op de webpagina de vertrekken van gisteren niet; daarvoor zou de API een live koppeling met Citi Bike nodig hebben.
+
+#### Foutenanalyse van het 2024-model
+- **Per uur:** absoluut de grootste fout in de spits; relatief 's nachts (25–38% van een handvol ritten: toeval). Overdag is het weekend relatief moeilijker (20–25%) dan een weekdag (14–18%).
+- **Per zone:** overal ± 19–20% van de vraag, alleen de rustigste zone hoger (25%). Het model overschat in elke zone een beetje, door de dagen hieronder.
+- **Per dag:** de grootste fouten zijn **Kerstmis** (+213%), **Thanksgiving** (+165%) en de dagen errond, en Memorial Day (+72%, met 45 mm regen). Het model had in zijn ene trainingsjaar geen enkel voorbeeld van die dagen gezien. Dat werd de aanleiding voor §10.
+- **Regen:** het model onderschat het regen-effect (bij 0,5–2 mm/u: 106 voorspeld, 90 werkelijk).
+- **Permutation importance:** uur (+98) en zone (+82), dan temperatuur, weekdag, maand; wind en weekend ≈ 0 (weekend zit al in de weekdag).
 
 ### 9.3 Tuning
 - **RandomizedSearchCV:** probeert willekeurige combinaties uit een zoekruimte, bijvoorbeeld 25 combinaties × 5 folds. Dat is efficiënter dan alle combinaties proberen.
 - **GridSearchCV:** probeert alle waarden van een rooster. Dat deden we voor `alpha` van het GLM.
+- **Standaard of getuned?** We vergelijken altijd de getunede instellingen met de standaard op exact dezelfde folds, en houden de beste (zoals PyCaret's `choose_better=True`).
 - **Lessen:**
   - een zoekruimte moet de standaardinstellingen bevatten (§13);
   - als de verschillen tussen de beste combinaties kleiner zijn dan de spreiding over de folds, maakt de exacte keuze weinig uit.
+- **In het notebook:** elke zoektocht bewaart zijn volledige resultaat in `models/searches/`. Met `RUN_SEARCHES = False` gebruikt notebook 2 die bewaarde resultaten (of voert het de zoektocht uit als ze nog niet bestaan); met `True` doet het alles opnieuw (enkele uren).
 
 ---
 
@@ -433,7 +471,10 @@ Het 2024-model maakte de grootste fouten op **Kerstmis** (+213%) en **Thanksgivi
 ### 10.2 Wat er veranderde
 - **Nieuwe kenmerken:** `year` (trend), `active_stations` (aanbod in de zone) en `snow_depth_cm` (§10.5).
 - **Validatie:** backtesting (§8.3); test = de laatste 12 maanden.
-- **Hertunen** op alle data. De beste instellingen hebben veel grotere bladeren (± 335 rijen in plaats van 18): met 15 keer meer data kan elk blad op meer uren steunen. De winst was klein (backtest 32,0 → 31,8).
+- **Baselines op alle data:** het gemiddelde per zone × uur × weekend over **alle jaren** haalt 82 (backtest), over **de laatste 12 maanden** 58: een gemiddelde over 13 jaar onderschat de vraag van vandaag. Op de testset haalt de beste baseline 71 (R² 0,68): nieuwe stations en een koude winter.
+- **Standaardinstellingen** volstaan niet meer (backtest 36,4, test 36,1): hooguit 100 bomen, te weinig voor 2,5 miljoen rijen. Met de **instellingen uit 2024**: backtest 32,0, test 29,1 (de eerste versie in de API).
+- **Hertunen** op alle data: 10 combinaties × 3 backtest-folds. De beste instellingen hebben veel grotere bladeren (± 335 uren in plaats van 18): met ± 10 keer meer trainingsdata kan elk blad op meer uren steunen. De winst was klein (backtest 32,0 → 31,8, wel in alle drie de folds); test **28,9**.
+- **Fold 1 is moeilijker** (38,5 tegenover ± 28): in dat validatiejaar (oktober 2023 – september 2024) groeide het netwerk het snelst, en elke fold leert alleen van de jaren ervoor.
 
 ### 10.3 Helpt meer data echt? De leercurve
 ![Leercurve](img/leercurve.png)
@@ -462,7 +503,19 @@ In een eerste versie van de foutenanalyse zaten de grootste fouten op **droge da
 ![Sneeuw](img/sneeuw_januari_2026.png)
 
 - **Op de testset:** MAE 30,1 → 28,9, en de fouten na de storm halveren ruwweg.
-- **In de backtest:** neutraal (31,7 zonder, 31,8 met). De validatiejaren hadden zachte winters met weinig sneeuw; het kenmerk helpt alleen als er sneeuw ligt.
+- **In de backtest:** neutraal (31,7 zonder, 31,8 met; beter in 2 van de 3 folds). Waarom? Vergelijk de winters (december–februari):
+
+| Winter | Rol | Gem. temperatuur | Dagen met ≥ 5 cm sneeuw op de grond | Max. sneeuwhoogte |
+|---|---|---|---|---|
+| 2013–2014 | training | −1,6 °C | 54 | 47 cm |
+| 2014–2015 | training | −1,9 °C | 36 | 35 cm |
+| 2020–2021 | training | 0,9 °C | 34 | 30 cm |
+| 2022–2023 | validatie | 3,4 °C | 1 | 7 cm |
+| 2023–2024 | validatie | 2,8 °C | 22 | 14 cm |
+| 2024–2025 | validatie | 0,1 °C | 9 | 10 cm |
+| **2025–2026** | **test** | **−1,9 °C** | **41** | **51 cm** |
+
+  De validatiewinters hadden weinig sneeuw; de testwinter was samen met 2014–2015 de koudste en had de grootste sneeuwhoogte van alle jaren. Het kenmerk helpt alleen als er sneeuw ligt, dus in de backtest kon het zijn waarde nauwelijks tonen. Dat de trainingsjaren wél sneeuwwinters bevatten, is ook waarom het model op alle data in januari en februari 2026 het meest beter is dan het model op één jaar.
 - **We houden het, met die kanttekening.** Het verschil met de lags: die waren in **elke** fold slechter, de sneeuwhoogte is in de backtest neutraal, en het mechanisme is logisch.
 
 ---
@@ -474,17 +527,25 @@ In een eerste versie van de foutenanalyse zaten de grootste fouten op **droge da
 ![Fout per maand](img/fout_per_maand.png)
 
 ### 11.1 Feestdagen: de zwakke plek uit 2024
-| Dag | Fout definitief model | 2024-studie |
-|---|---|---|
-| Thanksgiving | **+5%** | +165% |
-| Kerstmis | **+26%** | +213% |
-| Nieuwjaar | −4% | |
-| Memorial Day | +11% | |
-| Labor Day | −7% | |
+Fout van de voorspelde vertrekken per dag (alle zones samen), voor elke officiële feestdag in de testperiode:
+
+| Dag | Definitief model | Zelfde model, 1 jaar data | 2024-studie |
+|---|---|---|---|
+| Thanksgiving | **+5%** | −22% | +165% |
+| Kerstmis | **+26%** | +38% | +213% |
+| Nieuwjaar | −4% | +11% | |
+| Martin Luther King Day | −16% | −25% | |
+| Presidents Day | +20% | +1% | |
+| Memorial Day | +11% | +13% | +72% |
+| Juneteenth | −9% | −21% | |
+| 4 juli (gevierd op 3 juli) | +23% | +17% | |
+| Labor Day | −7% | −13% | |
+| **Columbus Day** | **+41%** (regendag) | +66% | |
+| **Veterans Day** | **−52%** | −63% | |
 
 **Wat nog misgaat:**
-- de dagen **rond** de feestdagen: de dag na Thanksgiving +68%, kerstavond +103%, de week tot Nieuwjaar +33% tot +197%. Dat zijn geen officiële feestdagen, dus het model verwacht gewone werkdagen;
-- **Veterans Day** −52%: veel New Yorkers werken dan gewoon, maar het model behandelt alle feestdagen hetzelfde.
+- **Columbus Day** en **Veterans Day**: op die dagen werken veel New Yorkers gewoon, maar het model leerde één effect voor alle feestdagen samen. Eén vlag `is_holiday` is te grof;
+- de dagen **rond** de feestdagen: de dag na Thanksgiving +68%, kerstavond +103%, de week tot Nieuwjaar +33% tot +197%. Dat zijn geen officiële feestdagen, dus het model verwacht gewone werkdagen.
 
 ### 11.2 Andere fouten
 - **Vlak na zware sneeuw** blijft het model te optimistisch: het weet niet of de straten geruimd zijn.
@@ -503,25 +564,12 @@ In een eerste versie van de foutenanalyse zaten de grootste fouten op **droge da
 ## 12. Deployment
 
 ### 12.1 Architectuur
-```mermaid
-sequenceDiagram
-    participant B as Browser (webpagina)
-    participant OM as Open-Meteo
-    participant API as FastAPI op Oracle VM
-    participant M as model.pkl
-    B->>API: GET /citi_bike_demand/ (zones, model-info)
-    B->>OM: weersvoorspelling per uur (temp, neerslag, wind, sneeuwhoogte)
-    B->>API: POST /citi_bike_demand/predict_day {zone, datum, 24 x weer}
-    API->>API: make_features + huidig aantal actieve stations
-    API->>M: model.predict(...)
-    M-->>API: 24 voorspellingen
-    API-->>B: vertrekken per uur + totaal + MAE
-```
+![Een voorspelling via de API](img/schema_api.png)
 
 ### 12.2 Onderdelen
 | Onderdeel | Wat het doet |
 |---|---|
-| **`train.py`** | meet het model eerlijk (train op het verleden, test op de laatste 12 maanden); weigert het als het meer dan 2% slechter is dan het model dat er staat (**kwaliteitscontrole**); hertraint het daarna op **alle** uren; schrijft een **bundle** (model + kenmerken + metrics + zones + beperkingen) met **joblib** |
+| **Deel F van notebook 2**, of het script **`train.py`** (zelfde stappen) | meet het model eerlijk (train op het verleden, test op de laatste 12 maanden); weigert het als het meer dan 2% slechter is dan het model dat er staat (**kwaliteitscontrole**); hertraint het daarna op **alle** uren; schrijft een **bundle** (model + kenmerken + metrics + zones + beperkingen) met **joblib** |
 | **FastAPI** (`deploy/citi_bike_demand/api.py`) | Python-webframework; **Pydantic** controleert de invoer (bv. neerslag ≥ 0, geldige zone; anders HTTP 422); endpoints `GET /`, `POST /predict`, `POST /predict_day` |
 | **`make_features`** | staat twee keer in de repo (training en API, want alleen `deploy/` gaat naar de server); **`test_features.py`** (pytest) faalt zodra ze uit elkaar lopen |
 | **uvicorn** | de webserver die de FastAPI-app draait |
@@ -550,6 +598,8 @@ sequenceDiagram
 | Station-id's tellen | 124 stations dubbel in december 2019 | tel via de locatie, niet via de id |
 | Gemiddelde over alle jaren | baseline 82 tegen 58 voor "vorig jaar" | meer data helpt pas als het model de trend kan volgen |
 | Sneeuwhoogte | groot effect op de test, neutraal in de backtest | eerlijk rapporteren: gemeten op één sneeuwrijke winter |
+| Eén vlag `is_holiday` | Columbus Day +41%, Veterans Day −52% | feestdagen verschillen te veel; aparte kenmerken per soort feestdag zijn een volgende stap |
+| Model op één jaar | Kerstmis +213%: nooit een voorbeeld gezien | zeldzame dagen vragen meer jaren data |
 
 ---
 
@@ -656,8 +706,14 @@ Binnen de testset is het jaar bijna overal 2025 of 2026, dus husselen verandert 
 **Waarom hielden jullie de sneeuwhoogte, maar niet de lags?**
 De lags waren in elke cross-validatiefold slechter en zijn in de API niet beschikbaar. De sneeuwhoogte is in de backtest neutraal (die winters hadden weinig sneeuw), helpt sterk op precies de juiste dagen, en is beschikbaar in de weersvoorspelling.
 
-**Wat doet `train.py` precies?**
-Het meet het model op de laatste 12 maanden met een model dat alleen het verleden kende, vergelijkt dat met het model dat er staat (maximaal 2% slechter), hertraint daarna op alle uren, en schrijft model, kenmerken, metrics en zones samen weg.
+**Wat doen deel F van notebook 2 en `train.py` precies?**
+Ze meten het model op de laatste 12 maanden met een model dat alleen het verleden kende, vergelijken dat met het model dat er staat (maximaal 2% slechter), hertrainen daarna op alle uren, en schrijven model, kenmerken, metrics en zones samen weg.
+
+**Waarom eerst op 2024 en pas daarna op alle data?**
+Op één jaar duurt een model trainen seconden, op 13 jaar minuten. We vergeleken alle technieken grondig op 2024 en trainden alleen de winnaar op alle data.
+
+**Waarom is de testfout in 2024 hoger dan de CV-fout?**
+De testset (laatste 7 dagen van elke maand) bevat toevallig Thanksgiving, Kerstmis en oudejaar, de moeilijkste dagen van het jaar.
 
 **Hoe komt een nieuw model op de server?**
 Een pull request met het nieuwe `model.pkl` wordt gemerged naar `main`. GitHub Actions test de API met het nieuwe model, kopieert de bestanden naar de VM, herstart de service en controleert `/health`. Faalt dat, dan zet het automatisch de vorige versie terug. Daarna draait de smoke test.
@@ -669,21 +725,28 @@ Het model ziet gerealiseerde ritten, geen echte vraag: een leeg station telt als
 
 ## 17. Bestanden
 
+**In deze map (alles wat nodig is om het werk te lezen en te herhalen):**
+
+| Bestand | Inhoud |
+|---|---|
+| `01_cleaning.ipynb` | cleaning met alle keuzes en alle code; schrijft de tabellen |
+| `02_analyse_en_modellen.ipynb` | EDA, hypotheses, alle modellen en zoektochten, foutenanalyse, deployment, conclusie; alle code |
+| `UITLEG.md` | dit document |
+| `img/` | grafieken en schema's in dit document |
+
+**Elders in de repository `CloudAI-Challenge` (paden vanaf `citi_bike/Kobe/`):**
+
 | Pad | Inhoud |
 |---|---|
-| `Final/01_cleaning.ipynb` | cleaning met alle keuzes |
-| `Final/02_analyse_en_modellen.ipynb` | EDA, hypotheses, modellen, foutenanalyse, deployment, conclusie |
-| `Final/UITLEG.md` | dit document |
-| `Final/img/` | grafieken in dit document |
-| `../citibike.py` | alle verwerkingscode (gedeeld) |
-| `../train.py` | model voor de API trainen en wegschrijven |
-| `../test_features.py` | test: API en training berekenen dezelfde kenmerken |
-| `../data/model_table.parquet` | de modeltabel (in Git, 28 MB) |
-| `../data/zones.json` | de 30 zones (naam, centrum, actieve stations) |
-| `../models/` | opgeslagen metrics en hyperparameters (`2024/` voor de modelselectie) |
-| `../../../deploy/` | API, webpagina's en `model.pkl` |
-| `../../../.github/workflows/` | deploy en smoke test |
-| `../0x_….ipynb` | werknotebooks met dezelfde stappen in meer detail |
+| `data/model_table.parquet`, `data/2024/model_table.parquet` | de modeltabellen (in Git, zodat niemand 32 GB moet downloaden om het model te hertrainen) |
+| `data/zones.json` | de 30 zones (naam, centrum, actieve stations) |
+| `models/searches/` | de bewaarde resultaten van alle zoektochten (geschreven door notebook 2) |
+| `models/best_params.json` | de gekozen hyperparameters |
+| `train.py`, `citibike.py` | hetzelfde als deel F van notebook 2, als script (zonder notebook hertrainen) |
+| `test_features.py` | test: API en training berekenen dezelfde kenmerken |
+| `0x_….ipynb` | de oorspronkelijke werknotebooks (de inhoud zit volledig in de twee Final-notebooks) |
+| `../../deploy/` | API, webpagina's en `model.pkl` |
+| `../../.github/workflows/` | deploy en smoke test |
 
 ---
 
