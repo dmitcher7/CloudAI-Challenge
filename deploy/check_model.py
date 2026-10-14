@@ -61,17 +61,31 @@ info = r.json()
 check("/citi_bike/ geeft model-info", r.status_code == 200 and info.get("features"),
       f"{info.get('model')} uit {info.get('model_file')}")
 
-trip = {"started_at": "2024-06-15T09:30:00", "rideable_type": "classic_bike", "member_casual": "member",
-        "start_station_id": "HB101", "start_lat": 40.7359, "start_lng": -74.0303}
-for variant in [{}, {"rideable_type": "electric_bike", "member_casual": "casual"},
-                {"start_station_id": "bestaat-niet"}, {"started_at": "2024-12-28T23:45"}]:
-    r = client.post("/citi_bike/predict", json=dict(trip, **variant))
+r = client.get("/citi_bike/stations")
+check("/citi_bike/stations geeft de stationslijst", r.status_code == 200 and len(r.json()) > 1000, f"{len(r.json())} stations")
+
+# W 21 St & 6 Ave -> Broadway & E 14 St (± 0,8 km)
+trip = {"started_at": "2026-06-15T08:30:00", "rideable_type": "classic_bike", "member_casual": "member",
+        "start_station_id": "6140.05", "start_lat": 40.74174, "start_lng": -73.99416,
+        "end_station_id": "5905.12", "end_lat": 40.73497, "end_lng": -73.99073,
+        "temperature_2m": 20.0, "relative_humidity_2m": 60.0, "precipitation": 0.0, "wind_speed_10m": 10.0}
+no_weather = {k: v for k, v in trip.items() if k not in ("temperature_2m", "relative_humidity_2m", "precipitation", "wind_speed_10m")}
+for name, payload in [("voorbeeld", trip), ("e-bike, casual", dict(trip, rideable_type="electric_bike", member_casual="casual")),
+                      ("zonder weer", no_weather), ("onbekende stations", dict(trip, start_station_id="bestaat-niet", end_station_id="ook-niet")),
+                      ("feestdag laat op de avond", dict(trip, started_at="2026-07-04T23:45"))]:
+    r = client.post("/citi_bike/predict", json=payload)
     minutes = r.json().get("predicted_duration_minutes") if r.status_code == 200 else None
-    check(f"/citi_bike/predict {variant or 'voorbeeld'}",
-          isinstance(minutes, (int, float)) and 0 <= minutes < 24 * 60, r.text)
+    check(f"/citi_bike/predict {name}", isinstance(minutes, (int, float)) and 0 <= minutes <= 180, r.text)
+far = client.post("/citi_bike/predict", json=dict(trip, end_station_id="7458.03", end_lat=40.7685, end_lng=-73.9815)).json()
+near = client.post("/citi_bike/predict", json=trip).json()
+check("citi_bike: verdere bestemming geeft een langere rit",
+      far["predicted_duration_minutes"] > near["predicted_duration_minutes"],
+      f"{near['predicted_duration_minutes']} min tegenover {far['predicted_duration_minutes']} min")
 
 r = client.post("/citi_bike/predict", json=dict(trip, member_casual="iemand"))
 check("citi_bike: ongeldige waarde geeft 422", r.status_code == 422, r.status_code)
+r = client.post("/citi_bike/predict", json=no_weather | {"end_station_id": None})
+check("citi_bike: zonder bestemming geeft 422", r.status_code == 422, r.status_code)
 
 # --- Citi Bike-vraag (vertrekken per zone per uur) ---
 r = client.get("/citi_bike_demand/")

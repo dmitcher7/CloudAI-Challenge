@@ -39,6 +39,7 @@
       .result strong { display:block; font-size:36px; letter-spacing:-.04em; }
       .result small { color:var(--muted); line-height:1.5; }
       .result.error { border-color:#d64e3a; background:#fff0ed; }
+      .hint { margin:0; color:var(--muted); font:12px "DM Mono",monospace; line-height:1.5; }
       footer { position:relative; border-top:1px solid var(--line); max-width:1180px; margin:auto; padding:25px 32px; display:flex; justify-content:space-between; }
       footer a { color:inherit; }
       @media(max-width:800px){ main{grid-template-columns:1fr;padding-top:50px}.facts{margin-top:30px}.card{box-shadow:7px 7px 0}.split{grid-template-columns:1fr}h1{font-size:58px} }
@@ -49,7 +50,7 @@
       <section class="intro">
         <p class="eyebrow">NYC · CITI BIKE · ML</p>
         <h1>Hoe lang ben je <em>onderweg?</em></h1>
-        <p class="lead">Een uitlegbare schatting op basis van wat we bij vertrek weten—geen informatie uit de toekomst.</p>
+        <p class="lead">Een schatting op basis van wat je bij vertrek weet: je start, je bestemming, het tijdstip en het weer. Geen informatie uit de toekomst.</p>
         <div class="facts">
           <div><span>01</span><p>Tijdsgebaseerde evaluatie</p></div>
           <div><span>02</span><p>Geen target leakage</p></div>
@@ -73,11 +74,10 @@
               <select id="member_casual"><option value="member">Member</option><option value="casual">Casual</option></select>
             </label>
           </div>
-          <label>Startstation-ID<input required id="start_station_id" value="HB101" maxlength="100" /></label>
-          <div class="split">
-            <label>Latitude<input required id="start_lat" type="number" step="0.0001" min="40.4" max="41.1" value="40.7359" /></label>
-            <label>Longitude<input required id="start_lng" type="number" step="0.0001" min="-74.4" max="-73.5" value="-74.0303" /></label>
-          </div>
+          <label>Startstation<input required id="start_station" list="station-list" autocomplete="off" placeholder="typ een straatnaam, bv. W 21 St" /></label>
+          <label>Bestemming<input required id="end_station" list="station-list" autocomplete="off" placeholder="typ een straatnaam, bv. Broadway & E 14 St" /></label>
+          <datalist id="station-list"></datalist>
+          <p id="weather" class="hint">Het weer wordt bij de berekening opgehaald (Open-Meteo).</p>
           <button type="submit">Bereken ritduur <span>→</span></button>
         </form>
         <div id="result" class="result" hidden aria-live="polite"></div>
@@ -105,25 +105,68 @@
         })
         .catch(() => { $("health").textContent = "API offline"; });
 
+      // Stations: kiezen op naam; id en coördinaten komen uit de lijst van de API.
+      const stationsByName = new Map();
+      fetch(`${API_URL}/citi_bike/stations`)
+        .then((response) => response.json())
+        .then((stations) => {
+          const list = $("station-list");
+          stations.forEach((station) => {
+            stationsByName.set(station.name, station);
+            const option = document.createElement("option");
+            option.value = station.name;
+            list.appendChild(option);
+          });
+          $("start_station").value = "W 21 St & 6 Ave";
+          $("end_station").value = "Broadway & E 14 St";
+        })
+        .catch(() => { $("weather").textContent = "Stationslijst niet geladen."; });
+
+      // Weer op het vertrekuur (Open-Meteo-voorspelling, tot ± 2 weken vooruit). Lukt het niet, dan gebruikt het model de mediaan.
+      async function weatherAt(startedAt, lat, lng) {
+        const day = startedAt.slice(0, 10);
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}`
+          + `&hourly=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m`
+          + `&timezone=America%2FNew_York&wind_speed_unit=kmh&start_date=${day}&end_date=${day}`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("geen weersvoorspelling");
+        const hourly = (await response.json()).hourly;
+        const index = hourly.time.indexOf(`${day}T${startedAt.slice(11, 13)}:00`);
+        if (index < 0) throw new Error("geen weersvoorspelling voor dat uur");
+        return Object.fromEntries(["temperature_2m", "relative_humidity_2m", "precipitation", "wind_speed_10m"]
+          .map((name) => [name, hourly[name][index]]));
+      }
+
       $("trip-form").addEventListener("submit", async (event) => {
         event.preventDefault();
         const result = $("result");
         result.hidden = false;
         result.className = "result";
         result.innerHTML = "Berekenen…";
-        const payload = {
-          started_at: $("started_at").value,
-          rideable_type: $("rideable_type").value,
-          member_casual: $("member_casual").value,
-          start_station_id: $("start_station_id").value,
-          start_lat: Number($("start_lat").value),
-          start_lng: Number($("start_lng").value),
-        };
         try {
+          const start = stationsByName.get($("start_station").value);
+          const end = stationsByName.get($("end_station").value);
+          if (!start || !end) throw new Error("Kies een start- en eindstation uit de lijst.");
+          const payload = {
+            started_at: $("started_at").value,
+            rideable_type: $("rideable_type").value,
+            member_casual: $("member_casual").value,
+            start_station_id: start.id, start_lat: start.lat, start_lng: start.lng,
+            end_station_id: end.id, end_lat: end.lat, end_lng: end.lng,
+          };
+          let weatherText = "geen weersvoorspelling voor dat moment: het model gebruikt het typische weer";
+          try {
+            const weather = await weatherAt(payload.started_at, start.lat, start.lng);
+            Object.assign(payload, weather);
+            weatherText = `${weather.temperature_2m} °C, ${weather.precipitation} mm neerslag, wind ${weather.wind_speed_10m} km/u`;
+          } catch (error) { /* zonder weer verder */ }
+          $("weather").textContent = `Weer: ${weatherText}.`;
           const response = await fetch(`${API_URL}/citi_bike/predict`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
           const data = await response.json();
           if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail) || "Voorspelling mislukt");
-          result.innerHTML = `<strong>${data.predicted_duration_minutes} min</strong><small>${data.message} Hold-out MAE: ${data.holdout_mae_minutes ?? "n.v.t."} min.</small>`;
+          result.innerHTML = `<strong>${data.predicted_duration_minutes} min</strong>`
+            + `<small>${data.direct_distance_km} km in rechte lijn · ${data.route_trips_in_history} eerdere ritten op deze route in de data.<br>`
+            + `${data.message} Gemiddelde fout op de eindtest: ${data.holdout_mae_minutes ?? "n.v.t."} min.</small>`;
         } catch (error) {
           result.classList.add("error");
           result.textContent = error.message;
