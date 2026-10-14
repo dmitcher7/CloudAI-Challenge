@@ -98,7 +98,18 @@
             <span id="distance" class="legend"></span>
             <span><button type="button" id="swap">⇄ wissel</button> <button type="button" id="clear">opnieuw</button></span>
           </div>
-          <p id="weather" class="hint">Het weer wordt bij de berekening opgehaald (Open-Meteo).</p>
+          <label>Weer
+            <select id="scenario">
+              <option value="actual">Echt weer (voorspelling)</option>
+              <option value="dry">Stel: droog en zacht (18 °C)</option>
+              <option value="rain">Stel: regen (2 mm/u)</option>
+              <option value="heavy">Stel: zware regen (8 mm/u)</option>
+              <option value="snow">Stel: sneeuw (−2 °C, neerslag)</option>
+              <option value="heat">Stel: hitte (33 °C)</option>
+            </select>
+          </label>
+          <p id="weather" class="hint">Het echte weer wordt bij de berekening opgehaald (Open-Meteo).</p>
+          <p class="hint">In dit model heeft het weer weinig invloed op de ritduur (hooguit ± een halve minuut): de afstand, de fiets en het type rijder bepalen het meest. Sneeuw kent het model niet apart; het rekent dan met vriesweer en neerslag.</p>
           <button type="submit">Bereken ritduur <span>→</span></button>
         </form>
         <div id="result" class="result" hidden aria-live="polite"></div>
@@ -236,12 +247,30 @@
             start_station_id: start.id, start_lat: start.lat, start_lng: start.lng,
             end_station_id: end.id, end_lat: end.lat, end_lng: end.lng,
           };
-          let weatherText = "geen weersvoorspelling voor dat moment: het model gebruikt het typische weer";
-          try {
-            const weather = await weatherAt(payload.started_at, start.lat, start.lng);
+          // Vaste scenario's (temperatuur °C, luchtvochtigheid %, neerslag mm/u, wind km/u).
+          const SCENARIOS = {
+            dry:   { temperature_2m: 18, relative_humidity_2m: 55, precipitation: 0,   wind_speed_10m: 10 },
+            rain:  { temperature_2m: 14, relative_humidity_2m: 90, precipitation: 2,   wind_speed_10m: 18 },
+            heavy: { temperature_2m: 14, relative_humidity_2m: 95, precipitation: 8,   wind_speed_10m: 25 },
+            snow:  { temperature_2m: -2, relative_humidity_2m: 90, precipitation: 1.5, wind_speed_10m: 20 },
+            heat:  { temperature_2m: 33, relative_humidity_2m: 45, precipitation: 0,   wind_speed_10m: 8 },
+          };
+          const scenario = $("scenario").value;
+          let weatherText;
+          if (scenario === "actual") {
+            // Geen voorspelling (bv. meer dan ± 2 weken vooruit): het model vult de mediaan uit de training in.
+            weatherText = "geen weersvoorspelling voor dat moment: het model rekent met 18 °C en droog (de mediaan uit de training)";
+            try {
+              const weather = await weatherAt(payload.started_at, start.lat, start.lng);
+              Object.assign(payload, weather);
+              weatherText = `${weather.temperature_2m} °C, ${weather.precipitation} mm neerslag, wind ${weather.wind_speed_10m} km/u (voorspelling)`;
+            } catch (error) { /* zonder weer verder */ }
+          } else {
+            const weather = SCENARIOS[scenario];
             Object.assign(payload, weather);
-            weatherText = `${weather.temperature_2m} °C, ${weather.precipitation} mm neerslag, wind ${weather.wind_speed_10m} km/u`;
-          } catch (error) { /* zonder weer verder */ }
+            weatherText = `${$("scenario").selectedOptions[0].textContent.replace("Stel: ", "")}: `
+              + `${weather.temperature_2m} °C, ${weather.precipitation} mm/u neerslag, wind ${weather.wind_speed_10m} km/u`;
+          }
           $("weather").textContent = `Weer: ${weatherText}.`;
           const response = await fetch(`${API_URL}/citi_bike/predict`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
           const data = await response.json();
