@@ -6,7 +6,9 @@ import argparse
 import gc
 import json
 import pickle
+import platform
 from datetime import datetime, timezone
+from importlib.metadata import version
 from pathlib import Path
 
 import numpy as np
@@ -332,6 +334,14 @@ def train_and_compare(
     bundle = {
         "model": best_model,
         "model_name": winner_name,
+        "runtime_versions": {
+            "python": platform.python_version(),
+            "numpy": version("numpy"),
+            "pandas": version("pandas"),
+            "scipy": version("scipy"),
+            "scikit-learn": version("scikit-learn"),
+            "catboost": version("catboost"),
+        },
         "features": list(x_train.columns),
         "target": TARGET,
         "trained_at_utc": datetime.now(timezone.utc).isoformat(),
