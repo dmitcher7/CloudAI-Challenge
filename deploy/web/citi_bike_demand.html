@@ -74,6 +74,9 @@
                 <option value="actual">Echt weer</option>
                 <option value="dry">Stel: droog</option>
                 <option value="rain">Stel: hele dag regen</option>
+                <option value="heavy">Stel: zware regen (8 mm/u)</option>
+                <option value="snow">Stel: sneeuw op straat (15 cm)</option>
+                <option value="storm">Stel: sneeuwstorm</option>
               </select>
             </label>
           </div>
@@ -166,12 +169,22 @@
         }
       }
 
+      // Een scenario verandert alleen wat erbij hoort; de echte temperatuur en wind van die dag blijven,
+      // zodat er geen onrealistische combinaties ontstaan (bv. sneeuw bij 25 °C).
       function scenarioWeather() {
         const scenario = $("scenario").value;
-        return hourlyWeather.map((w) => ({
-          ...w,
-          precipitation_mm: scenario === "dry" ? 0 : scenario === "rain" ? Math.max(2, w.precipitation_mm) : w.precipitation_mm,
-        }));
+        return hourlyWeather.map((w) => {
+          switch (scenario) {
+            case "dry":   return { ...w, precipitation_mm: 0 };
+            case "rain":  return { ...w, precipitation_mm: Math.max(2, w.precipitation_mm) };
+            case "heavy": return { ...w, precipitation_mm: Math.max(8, w.precipitation_mm) };
+            case "snow":  return { ...w, temperature_c: Math.min(0, w.temperature_c), precipitation_mm: 0,
+                                   snow_depth_cm: Math.max(15, w.snow_depth_cm) };
+            case "storm": return { ...w, temperature_c: Math.min(-2, w.temperature_c), precipitation_mm: Math.max(1.5, w.precipitation_mm),
+                                   snow_depth_cm: Math.max(25, w.snow_depth_cm) };
+            default:      return { ...w };
+          }
+        });
       }
 
       // ---------- Grafiek: 24 staven ----------
@@ -208,7 +221,7 @@
           if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail));
           const peak = data.hourly_trips.indexOf(Math.max(...data.hourly_trips));
           result.innerHTML = `<strong>${data.total_trips.toLocaleString("nl-BE")} vertrekken</strong>`
-            + `<small>Zone ${data.zone} (${data.zone_name}) op ${data.date}. Drukste uur: ${String(peak).padStart(2, "0")}:00 `
+            + `<small>Zone ${data.zone} (${data.zone_name}) op ${data.date}, weer: ${$("scenario").selectedOptions[0].textContent.replace("Stel: ", "").toLowerCase()}. Drukste uur: ${String(peak).padStart(2, "0")}:00 `
             + `met ± ${Math.round(data.hourly_trips[peak])} vertrekken. Gemiddelde fout op de testset: ± ${data.holdout_mae_trips == null ? "n.v.t." : Number(data.holdout_mae_trips).toFixed(0)} vertrekken per uur.</small>`
             + chart(data.hourly_trips);
         } catch (error) {

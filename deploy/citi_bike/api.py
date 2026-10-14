@@ -95,7 +95,8 @@ def make_features(frame: pd.DataFrame) -> pd.DataFrame:
     for column in CATEGORICAL:
         result[column] = result[column].astype("string").fillna("unknown").astype(object)
     for column in WEATHER_FEATURES:                    # ontbrekend weer: het model vult de mediaan uit de training in
-        result[column] = pd.to_numeric(result.get(column, np.nan), errors="coerce").astype(float)
+        values = result[column] if column in result else pd.Series(np.nan, index=result.index)
+        result[column] = pd.to_numeric(values, errors="coerce").astype(float)
     return result[FEATURES]
 
 
